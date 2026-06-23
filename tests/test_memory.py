@@ -1,6 +1,6 @@
 from datetime import date
 
-from pico.features.memory import (
+from lcah.features.memory import (
     LayeredMemory,
     append_to_daily_log,
     build_dream_prompt,
@@ -105,7 +105,7 @@ def test_process_notes_keep_kind_and_latest_duplicate_wins():
 
 
 def test_durable_memory_index_and_topic_notes_are_loaded_and_retrieved(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
+    memory_root = tmp_path / ".lcah" / "memory"
     topics_dir = memory_root / "topics"
     topics_dir.mkdir(parents=True)
     (memory_root / "MEMORY.md").write_text(
@@ -123,7 +123,7 @@ def test_durable_memory_index_and_topic_notes_are_loaded_and_retrieved(tmp_path)
         "- updated_at: 2026-04-12T08:14:49+00:00\n\n"
         "## Notes\n"
         "- Use constrained tools instead of guessing.\n"
-        "- Preserve local agent state under .pico/.\n",
+        "- Preserve local agent state under .lcah/.\n",
         encoding="utf-8",
     )
 
@@ -137,7 +137,7 @@ def test_durable_memory_index_and_topic_notes_are_loaded_and_retrieved(tmp_path)
 
 
 def test_kairos_daily_log_index_policy_and_memory_tag_helpers(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
+    memory_root = tmp_path / ".lcah" / "memory"
 
     ensure_memory_dir(memory_root)
     append_to_daily_log(memory_root, "Prefer repo-local memory assets.", today=date(2026, 5, 12))
@@ -161,7 +161,7 @@ def test_kairos_daily_log_index_policy_and_memory_tag_helpers(tmp_path):
 
 
 def test_kairos_memory_system_section_defines_file_contract_and_forget_policy(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
+    memory_root = tmp_path / ".lcah" / "memory"
 
     policy = build_memory_system_section(memory_root)
 
@@ -180,9 +180,9 @@ def test_kairos_memory_system_section_defines_file_contract_and_forget_policy(tm
 
 
 def test_dream_prompt_targets_repo_local_memory_assets(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
+    memory_root = tmp_path / ".lcah" / "memory"
 
-    prompt = build_dream_prompt(memory_root, transcript_dir=str(tmp_path / ".pico" / "sessions"), session_ids=["s1", "s2"])
+    prompt = build_dream_prompt(memory_root, transcript_dir=str(tmp_path / ".lcah" / "sessions"), session_ids=["s1", "s2"])
 
     assert "Dream: Memory Consolidation" in prompt
     assert str(memory_root) in prompt
@@ -192,8 +192,8 @@ def test_dream_prompt_targets_repo_local_memory_assets(tmp_path):
 
 
 def test_dream_prompt_uses_four_phase_filesystem_maintenance_flow(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
-    transcript_dir = tmp_path / ".pico" / "sessions"
+    memory_root = tmp_path / ".lcah" / "memory"
+    transcript_dir = tmp_path / ".lcah" / "sessions"
 
     prompt = build_dream_prompt(memory_root, transcript_dir=str(transcript_dir), session_ids=["s1"])
 
@@ -212,7 +212,7 @@ def test_dream_prompt_uses_four_phase_filesystem_maintenance_flow(tmp_path):
 
 
 def test_consolidation_lock_can_be_reacquired_after_release(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
+    memory_root = tmp_path / ".lcah" / "memory"
 
     assert try_acquire_lock(memory_root) is True
     release_lock(memory_root)
@@ -221,7 +221,7 @@ def test_consolidation_lock_can_be_reacquired_after_release(tmp_path):
 
 
 def test_session_scan_deduplicates_session_files_and_event_logs(tmp_path):
-    sessions_dir = tmp_path / ".pico" / "sessions"
+    sessions_dir = tmp_path / ".lcah" / "sessions"
     sessions_dir.mkdir(parents=True)
     (sessions_dir / "s1.json").write_text("{}", encoding="utf-8")
     (sessions_dir / "s1.events.jsonl").write_text("", encoding="utf-8")

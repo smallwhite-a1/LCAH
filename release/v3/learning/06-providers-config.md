@@ -1,16 +1,16 @@
 # Provider 和配置：Runtime 只面对一个小接口
 
-Pico 的 provider 层目标很克制：runtime 不应该知道某个后端走 `/responses` 还是 `/messages`，不应该自己解析 SSE，也不应该关心 usage 字段叫 `input_tokens` 还是 `prompt_tokens`。runtime 只要一个 `complete()`。
+LCAH 的 provider 层目标很克制：runtime 不应该知道某个后端走 `/responses` 还是 `/messages`，不应该自己解析 SSE，也不应该关心 usage 字段叫 `input_tokens` 还是 `prompt_tokens`。runtime 只要一个 `complete()`。
 
 ![Provider 配置收口](assets/06-providers-config.png)
 
 ## 配置入口
 
-`pico/config/__init__.py` 负责把配置来源收敛成 `ProviderConfig`：
+`lcah/config/__init__.py` 负责把配置来源收敛成 `ProviderConfig`：
 
 - 默认配置：`openai`、`anthropic`、`deepseek`
-- 项目配置：`.pico.toml`
-- 全局配置：`~/.config/pico/config.toml`
+- 项目配置：`.lcah.toml`
+- 全局配置：`~/.config/lcah/config.toml`
 - 项目 `.env`
 - 环境变量
 - CLI 参数覆盖
@@ -19,7 +19,7 @@ provider 和 protocol 分开。比如 `deepseek` 是 provider profile，但 prot
 
 ## CLI 做对象装配
 
-`pico/cli.py` 的 `_build_model_client()` 读取 `ProviderConfig` 后，只做一件事：根据 protocol 创建 client。
+`lcah/cli.py` 的 `_build_model_client()` 读取 `ProviderConfig` 后，只做一件事：根据 protocol 创建 client。
 
 - `protocol=openai` -> `OpenAICompatibleModelClient`
 - `protocol=anthropic` -> `AnthropicCompatibleModelClient`
@@ -58,7 +58,7 @@ provider 和 protocol 分开。比如 `deepseek` 是 provider profile，但 prot
 
 `AnthropicCompatibleModelClient` 使用 `/messages` 接口，输入是单条 user message，输出从 `content[type=text]` 抽取。它也走同一套 `_request_with_retries()` 和 metadata 结构，但目前不支持 prompt cache。
 
-这层设计的好处是，runtime 不关心协议差异。坏处是 Pico 目前没有用 Anthropic 原生 tool use，而是统一走文本协议，所以 provider 的结构化能力没有被充分利用。
+这层设计的好处是，runtime 不关心协议差异。坏处是 LCAH 目前没有用 Anthropic 原生 tool use，而是统一走文本协议，所以 provider 的结构化能力没有被充分利用。
 
 ## 错误处理是 provider 层的第一道可靠性
 
@@ -74,21 +74,21 @@ provider 配置和 shell 环境里都有敏感信息风险。CLI 会收集一组
 
 ## 和 Claude Code 的对标
 
-Claude Code 的 API 层比 Pico 更像可靠性控制面。它有 streaming、usage/cost tracking、retry 分类、prompt cache、预算控制、slow operation、feature flag、模型 override 和 telemetry。`QueryEngine` 还会维护 total usage、permission denials、SDK status 和 session transcript。
+Claude Code 的 API 层比 LCAH 更像可靠性控制面。它有 streaming、usage/cost tracking、retry 分类、prompt cache、预算控制、slow operation、feature flag、模型 override 和 telemetry。`QueryEngine` 还会维护 total usage、permission denials、SDK status 和 session transcript。
 
-Pico 当前更轻：
+LCAH 当前更轻：
 
-| 维度 | Pico | Claude Code |
+| 维度 | LCAH | Claude Code |
 | --- | --- | --- |
 | API 形态 | blocking `complete()` | streaming query loop 和 SDK messages |
 | 重试 | provider 层有限重试，Engine 额外重试 empty response | 分类重试、watchdog、budget 和状态事件更完整 |
 | usage | provider metadata 进 trace/report | cost tracker、model usage、API duration、telemetry |
 | cache | OpenAI-compatible prompt cache key | cache control、break detection、多维 cache 元数据 |
-| 配置 | `.pico.toml`、`.env`、环境变量、CLI | config、managed settings、GrowthBook、feature gates |
+| 配置 | `.lcah.toml`、`.env`、环境变量、CLI | config、managed settings、GrowthBook、feature gates |
 
 ## 当前取舍
 
-Pico 的 provider 抽象适合当前阶段：统一接口、统一 metadata、统一错误形状，先让 runtime 不被协议细节污染。
+LCAH 的 provider 抽象适合当前阶段：统一接口、统一 metadata、统一错误形状，先让 runtime 不被协议细节污染。
 
 后续最该补的是可靠性而不是 provider 数量。比如流式响应的 idle watchdog、分类 retry budget、provider 降级策略、cache miss 原因记录、模型行为回归档案。这些比再加一个 OpenAI-compatible profile 更能提升 harness 稳定性。
 
@@ -96,7 +96,7 @@ Pico 的 provider 抽象适合当前阶段：统一接口、统一 metadata、�
 
 Provider 层很容易被误解成“封装 API key 和 base_url”。对 runtime harness 来说，它应该承担更大的责任：协议转换、错误分类、usage 抽取、重试、cache metadata、secret redaction。
 
-Pico v3 的目标是让 runtime 面对一个小接口：
+LCAH v3 的目标是让 runtime 面对一个小接口：
 
 ```text
 complete(prompt, max_new_tokens, prompt_cache_key, prompt_cache_retention)
@@ -107,12 +107,12 @@ complete(prompt, max_new_tokens, prompt_cache_key, prompt_cache_retention)
 
 ### 配置合并是 provider 层的第一步
 
-Pico 的配置优先级是：
+LCAH 的配置优先级是：
 
 ```text
 CLI explicit args
   > environment variables
-  > project .pico.toml
+  > project .lcah.toml
   > global config
   > defaults
 ```
@@ -121,7 +121,7 @@ CLI explicit args
 
 第一，provider profile 和 protocol 分开。`deepseek` 可以是 profile 名，但真正决定 client 的是 `protocol`。
 
-第二，`.env` 和 `.pico.toml` 是项目本地入口。这样 release 和测试能复用真实配置路径，而不是靠 shell 临时 export。
+第二，`.env` 和 `.lcah.toml` 是项目本地入口。这样 release 和测试能复用真实配置路径，而不是靠 shell 临时 export。
 
 ### 为什么不让 Engine 直接知道协议
 
@@ -164,7 +164,7 @@ ProviderError 不能只是一段异常字符串。它至少要说明：
 
 ### prompt cache 和配置稳定性
 
-成熟 agent 很重视 prompt cache，不只是为了省钱，也为了降低长任务延迟。Pico 现在已有 prompt_cache_key / retention 的入口和 provider metadata，但还缺少 cache miss 解释。
+成熟 agent 很重视 prompt cache，不只是为了省钱，也为了降低长任务延迟。LCAH 现在已有 prompt_cache_key / retention 的入口和 provider metadata，但还缺少 cache miss 解释。
 
 后续可以把 cache 相关问题分成三类：
 
@@ -176,7 +176,7 @@ ProviderError 不能只是一段异常字符串。它至少要说明：
 
 ### 外部设计参照
 
-Managed Agents 的 Dreams 文档把异步 job、usage、status、error、output resource 都作为一等资源暴露。这说明 provider/API 层不只是“发请求”，它还要表达生命周期、成本和失败。Pico 虽然不是托管平台，但 provider 和 run report 也应该尽量保留这些信息。
+Managed Agents 的 Dreams 文档把异步 job、usage、status、error、output resource 都作为一等资源暴露。这说明 provider/API 层不只是“发请求”，它还要表达生命周期、成本和失败。LCAH 虽然不是托管平台，但 provider 和 run report 也应该尽量保留这些信息。
 
 ### 失败模式和防线
 
@@ -202,7 +202,7 @@ Managed Agents 的 Dreams 文档把异步 job、usage、status、error、output 
 
 Provider 改动至少验证：
 
-- `.pico.toml`、`.env`、环境变量、CLI override 优先级正确。
+- `.lcah.toml`、`.env`、环境变量、CLI override 优先级正确。
 - OpenAI-compatible 和 Anthropic-compatible 都返回统一 `ModelResult`。
 - 429/5xx/transport error 会重试并记录 retry_count。
 - API key 不出现在 task_state/trace/report。

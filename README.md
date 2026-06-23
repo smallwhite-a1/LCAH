@@ -1,32 +1,32 @@
 <div align="center">
 
-# pico
+# lcah
 
 **轻量、本地、有记忆的终端 coding agent**
 
-pico 跑在本地仓库里，接上一个模型 provider，就能读代码、跑命令、改文件、
+lcah 跑在本地仓库里，接上一个模型 provider，就能读代码、跑命令、改文件、
 保留运行证据，并把有价值的上下文沉淀成本地记忆。
 
 </div>
 
 <p align="center">
-  <img src="assets/screenshots/pico-tui-intro.png" alt="pico TUI 启动界面" width="960">
+  <img src="assets/screenshots/lcah-tui-intro.png" alt="lcah TUI 启动界面" width="960">
 </p>
 
 ---
 
-## pico 是什么
+## lcah 是什么
 
-pico 是一个本地终端里的 coding agent，运行在你的仓库上下文里。一次 agent 运行会被拆成几个可观察的部分：
+lcah 是一个本地终端里的 coding agent，运行在你的仓库上下文里。一次 agent 运行会被拆成几个可观察的部分：
 
 - **provider profile**：决定调用哪个模型、哪个 endpoint、用什么协议。
 - **context**：把系统提示、仓库信息、skills、记忆和最近对话装进 prompt。
 - **tools**：文件读取、搜索、shell、写文件、patch、子 agent 都走统一工具协议。
 - **approval / sandbox**：写操作和 shell 命令可以被审批或沙箱限制。
-- **session / run evidence**：对话、事件流、trace、report 都写到本地 `.pico/`。
+- **session / run evidence**：对话、事件流、trace、report 都写到本地 `.lcah/`。
 - **memory / dream**：把 daily log 整理成长期 topic，下次 session 可以继续用。
 
-pico 关注本地 coding agent 的工程边界：配置清楚、任务能续接、结果能复盘。
+lcah 关注本地 coding agent 的工程边界：配置清楚、任务能续接、结果能复盘。
 
 ## 界面
 
@@ -34,11 +34,11 @@ TUI 直接连接同一个 runtime。输入框、工具结果、状态栏、slash
 
 | 工具和子 agent | Skills、help 和命令补全 |
 | --- | --- |
-| ![pico TUI 工具表](assets/screenshots/pico-tui-tools.png) | ![pico TUI skills 和 help](assets/screenshots/pico-tui-skills-help.png) |
+| ![lcah TUI 工具表](assets/screenshots/lcah-tui-tools.png) | ![lcah TUI skills 和 help](assets/screenshots/lcah-tui-skills-help.png) |
 
 | Memory 和 durable topics | Slash command 工作区 |
 | --- | --- |
-| ![pico TUI memory 和 skills](assets/screenshots/pico-tui-memory-skills.png) | ![pico TUI slash command 补全](assets/screenshots/pico-tui-latest.png) |
+| ![lcah TUI memory 和 skills](assets/screenshots/lcah-tui-memory-skills.png) | ![lcah TUI slash command 补全](assets/screenshots/lcah-tui-latest.png) |
 
 ## 安装
 
@@ -47,26 +47,26 @@ TUI 直接连接同一个 runtime。输入框、工具结果、状态栏、slash
 一键安装：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/martin-los/pico/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/smallwhite-a1/LCAH/main/install.sh | bash
 ```
 
 源码安装：
 
 ```bash
-git clone https://github.com/martin-los/pico.git
-cd pico
+git clone https://github.com/smallwhite-a1/LCAH.git
+cd LCAH
 pip install -e .
 ```
 
 开发 checkout 里也可以直接跑：
 
 ```bash
-uv run pico
+uv run lcah
 ```
 
 ## 配置 provider
 
-pico 启动前先解析一个 **provider profile**。一个 profile 主要由四项组成：
+lcah 启动前先解析一个 **provider profile**。一个 profile 主要由四项组成：
 
 | 字段 | 作用 |
 | --- | --- |
@@ -78,19 +78,19 @@ pico 启动前先解析一个 **provider profile**。一个 profile 主要由四
 配置合并优先级是：
 
 ```text
-CLI 参数 > 环境变量 > 项目 .pico.toml > 全局 ~/.config/pico/config.toml > 代码默认值
+CLI 参数 > 环境变量 > 项目 .lcah.toml > 全局 ~/.config/lcah/config.toml > 代码默认值
 ```
 
-### 方式一：项目 `.pico.toml`
+### 方式一：项目 `.lcah.toml`
 
 这是最推荐的配置方式，适合每个仓库独立指定 provider：
 
 ```bash
-cp .pico.toml.example .pico.toml
-$EDITOR .pico.toml
+cp .lcah.toml.example .lcah.toml
+$EDITOR .lcah.toml
 ```
 
-`.pico.toml` 默认被 `.gitignore` 忽略，不要把真实 key 提交进 git。
+`.lcah.toml` 默认被 `.gitignore` 忽略，不要把真实 key 提交进 git。
 
 最小可用示例：
 
@@ -125,12 +125,12 @@ model = "claude-sonnet-4-6"
 不想把 key 写进 TOML 时，用环境变量：
 
 ```bash
-export PICO_PROVIDER=deepseek
+export LCAH_PROVIDER=deepseek
 export DEEPSEEK_API_KEY=sk-...
 export DEEPSEEK_BASE_URL=https://api.deepseek.com/anthropic
 export DEEPSEEK_MODEL=deepseek-v4-pro
 
-pico
+lcah
 ```
 
 常用 provider 变量：
@@ -144,9 +144,9 @@ pico
 也可以用通用覆盖变量：
 
 ```bash
-export PICO_API_KEY=sk-...
-export PICO_BASE_URL=https://api.openai.com/v1
-export PICO_MODEL=gpt-5.4
+export LCAH_API_KEY=sk-...
+export LCAH_BASE_URL=https://api.openai.com/v1
+export LCAH_MODEL=gpt-5.4
 ```
 
 ### 方式三：命令行临时覆盖
@@ -154,9 +154,9 @@ export PICO_MODEL=gpt-5.4
 临时换 provider 或模型：
 
 ```bash
-pico --provider openai --model gpt-5.4 --base-url https://api.openai.com/v1
-pico --provider deepseek --approval ask --max-steps 80
-pico --config /path/to/custom.toml --cwd /path/to/repo
+lcah --provider openai --model gpt-5.4 --base-url https://api.openai.com/v1
+lcah --provider deepseek --approval ask --max-steps 80
+lcah --config /path/to/custom.toml --cwd /path/to/repo
 ```
 
 完整配置说明见 [docs/configuration.md](docs/configuration.md)。
@@ -166,21 +166,21 @@ pico --config /path/to/custom.toml --cwd /path/to/repo
 常用入口：
 
 ```bash
-pico                              # 默认 Textual TUI
-pico --repl                       # 普通终端 REPL
-pico "找出测试失败的根因"          # one-shot 任务
-pico --resume latest              # 续接最近 session
-pico --cwd /path/to/repo          # 指定工作目录
+lcah                              # 默认 Textual TUI
+lcah --repl                       # 普通终端 REPL
+lcah "找出测试失败的根因"          # one-shot 任务
+lcah --resume latest              # 续接最近 session
+lcah --cwd /path/to/repo          # 指定工作目录
 ```
 
 常用运行参数：
 
 ```bash
-pico --approval ask               # shell / 写文件前询问
-pico --approval auto              # 普通操作自动通过
-pico --approval never             # 非交互模式
-pico --sandbox best_effort        # 尽量隔离 shell 命令
-pico --no-auto-dream              # 关闭后台 memory 整合
+lcah --approval ask               # shell / 写文件前询问
+lcah --approval auto              # 普通操作自动通过
+lcah --approval never             # 非交互模式
+lcah --sandbox best_effort        # 尽量隔离 shell 命令
+lcah --no-auto-dream              # 关闭后台 memory 整合
 ```
 
 ## 日常用法
@@ -219,9 +219,9 @@ pico --no-auto-dream              # 关闭后台 memory 整合
 | `/model <name>` | 当前 session 临时切模型。 |
 | `/compact` | 压缩较早的对话历史。 |
 | `/clear` | 开一个新的空 session。 |
-| `/exit` | 退出 pico。 |
+| `/exit` | 退出 lcah。 |
 
-## pico 能做什么
+## lcah 能做什么
 
 | 能力 | 说明 |
 | --- | --- |
@@ -238,21 +238,21 @@ pico --no-auto-dream              # 关闭后台 memory 整合
 
 | 数据 | 路径 |
 | --- | --- |
-| 项目配置 | `.pico.toml` |
-| 全局配置 | `~/.config/pico/config.toml` |
-| 会话历史 | `.pico/sessions/<id>.json` |
-| 事件流 | `.pico/sessions/<id>.events.jsonl` |
-| 运行证据 | `.pico/runs/<run_id>/` |
-| 记忆索引 | `.pico/memory/MEMORY.md` |
-| Daily logs | `.pico/memory/logs/YYYY/MM/YYYY-MM-DD.md` |
-| Durable topics | `.pico/memory/topics/*.md` |
-| 用户 skills | `~/.pico/skills/<name>/SKILL.md` |
-| 项目 skills | `skills/<name>/SKILL.md` 或 `.pico/skills/<name>/SKILL.md` |
+| 项目配置 | `.lcah.toml` |
+| 全局配置 | `~/.config/lcah/config.toml` |
+| 会话历史 | `.lcah/sessions/<id>.json` |
+| 事件流 | `.lcah/sessions/<id>.events.jsonl` |
+| 运行证据 | `.lcah/runs/<run_id>/` |
+| 记忆索引 | `.lcah/memory/MEMORY.md` |
+| Daily logs | `.lcah/memory/logs/YYYY/MM/YYYY-MM-DD.md` |
+| Durable topics | `.lcah/memory/topics/*.md` |
+| 用户 skills | `~/.lcah/skills/<name>/SKILL.md` |
+| 项目 skills | `skills/<name>/SKILL.md` 或 `.lcah/skills/<name>/SKILL.md` |
 
 ## 项目结构
 
 ```text
-pico/
+lcah/
 ├── cli.py                 # CLI 参数、启动模式、REPL 命令
 ├── config/                # provider profile、TOML、env 解析
 ├── core/                  # runtime、engine、session、workers、context
@@ -270,14 +270,14 @@ pip install -e ".[dev]"
 pytest tests/ -q
 
 # 真实 provider 烟测需要 key
-PICO_LIVE_SMOKE=1 pytest tests/test_release_smoke.py -q
+LCAH_LIVE_SMOKE=1 pytest tests/test_release_smoke.py -q
 ```
 
 ## 文档
 
 | 入口 | 内容 |
 | --- | --- |
-| [配置](docs/configuration.md) | provider profile、`.pico.toml`、环境变量和 sandbox 配置。 |
+| [配置](docs/configuration.md) | provider profile、`.lcah.toml`、环境变量和 sandbox 配置。 |
 | [分层记忆 + auto-dream](docs/memory.md) | working memory、daily logs、durable topics 和后台整合。 |
 | [Skills](docs/skills.md) | `SKILL.md` 目录结构、内置技能和自定义 workflow。 |
 | [Sandbox](docs/sandbox.md) | `run_shell` 隔离模式、backend 选择和文件系统边界。 |

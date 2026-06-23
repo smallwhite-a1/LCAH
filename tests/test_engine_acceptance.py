@@ -1,15 +1,15 @@
 import json
 
-from pico.testing import ScriptedModelClient
-from pico import Pico, SessionStore, WorkspaceContext
-from pico.providers import ProviderError
+from lcah.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
+from lcah.providers import ProviderError
 
 
 def build_agent(tmp_path, outputs, **kwargs):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    store = SessionStore(tmp_path / ".pico" / "sessions")
-    return Pico(
+    store = SessionStore(tmp_path / ".lcah" / "sessions")
+    return LCAH(
         model_client=ScriptedModelClient(outputs),
         workspace=workspace,
         session_store=store,

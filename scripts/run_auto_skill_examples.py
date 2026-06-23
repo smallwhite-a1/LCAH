@@ -19,9 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pico import Pico, SessionStore, WorkspaceContext
-from pico.cli import handle_repl_command
-from pico.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
+from lcah.cli import handle_repl_command
+from lcah.testing import ScriptedModelClient
 
 
 def main() -> int:
@@ -102,7 +102,7 @@ def main() -> int:
         auto_skills = [
             skill
             for skill in agent.skills.values()
-            if ".pico/skills" in str(skill.skill_root)
+            if ".lcah/skills" in str(skill.skill_root)
         ]
         catalog_chars = sum(len(skill.name) + len(skill.description) for skill in auto_skills)
         full_auto_skill_chars = 0
@@ -144,7 +144,7 @@ def main() -> int:
                     [
                         name
                         for name, skill in agent.skills.items()
-                        if ".pico/skills" in str(skill.skill_root)
+                        if ".lcah/skills" in str(skill.skill_root)
                     ]
                 ),
                 "read_skill_contains_memory": ".memory.md:" in csv_read,
@@ -167,12 +167,12 @@ def main() -> int:
     return 0
 
 
-def _agent(root: Path) -> Pico:
+def _agent(root: Path) -> LCAH:
     workspace = WorkspaceContext.build(root)
-    return Pico(
+    return LCAH(
         model_client=ScriptedModelClient([]),
         workspace=workspace,
-        session_store=SessionStore(root / ".pico" / "sessions"),
+        session_store=SessionStore(root / ".lcah" / "sessions"),
         approval_policy="auto",
     )
 

@@ -3,19 +3,19 @@ import os
 import subprocess
 import sys
 
-from pico.testing import ScriptedModelClient
-from pico import Pico, SessionStore, WorkspaceContext
-from pico.cli import handle_repl_command
-from pico.features import skills as skillslib
+from lcah.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
+from lcah.cli import handle_repl_command
+from lcah.features import skills as skillslib
 
 
 def build_agent(tmp_path, outputs):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    return Pico(
+    return LCAH(
         model_client=ScriptedModelClient(outputs),
         workspace=workspace,
-        session_store=SessionStore(tmp_path / ".pico" / "sessions"),
+        session_store=SessionStore(tmp_path / ".lcah" / "sessions"),
         approval_policy="auto",
     )
 
@@ -33,7 +33,7 @@ def test_builtin_skills_are_available_in_context(tmp_path):
 
 
 def test_prompt_includes_auto_memory_policy_and_index(tmp_path):
-    memory_root = tmp_path / ".pico" / "memory"
+    memory_root = tmp_path / ".lcah" / "memory"
     memory_root.mkdir(parents=True)
     (memory_root / "MEMORY.md").write_text(
         "# Durable Memory Index\n\n- [Project](project.md): Project facts\n",
@@ -53,16 +53,16 @@ def test_prompt_includes_auto_memory_policy_and_index(tmp_path):
 def test_prompt_documents_project_skill_frontmatter_contract(tmp_path):
     agent = build_agent(tmp_path, [])
 
-    prompt = agent.prompt("Create .pico/skills/audit/SKILL.md")
+    prompt = agent.prompt("Create .lcah/skills/audit/SKILL.md")
 
-    assert "When creating Pico skill files" in prompt
-    assert ".pico/skills/<name>/SKILL.md" in prompt
+    assert "When creating LCAH skill files" in prompt
+    assert ".lcah/skills/<name>/SKILL.md" in prompt
     assert "user-invocable: true" in prompt
     assert "Audit $ARGUMENTS for risky changes." in prompt
 
 
 def test_project_skill_slash_invocation_runs_inline_session(tmp_path):
-    skill_dir = tmp_path / ".pico" / "skills" / "deploy"
+    skill_dir = tmp_path / ".lcah" / "skills" / "deploy"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
         """---
@@ -70,7 +70,7 @@ name: deploy
 description: Deploy checklist
 argument-hint: target
 ---
-Use target $ARGUMENTS from ${PICO_SKILL_DIR}.
+Use target $ARGUMENTS from ${LCAH_SKILL_DIR}.
 """,
         encoding="utf-8",
     )
@@ -98,7 +98,7 @@ def test_memory_slash_commands_use_kairos_assets(tmp_path):
     assert handled is True
     assert should_exit is False
     assert "Saved to daily log" in output
-    log_files = list((tmp_path / ".pico" / "memory" / "logs").rglob("*.md"))
+    log_files = list((tmp_path / ".lcah" / "memory" / "logs").rglob("*.md"))
     events = agent.session_store.event_path(agent.session["id"]).read_text(encoding="utf-8")
     assert len(log_files) == 1
     assert "I prefer concise reports" in log_files[0].read_text(encoding="utf-8")
@@ -110,7 +110,7 @@ def test_memory_slash_commands_use_kairos_assets(tmp_path):
     assert should_exit is False
     assert "No durable memories yet" in output
 
-    (tmp_path / ".pico" / "memory" / "MEMORY.md").write_text(
+    (tmp_path / ".lcah" / "memory" / "MEMORY.md").write_text(
         "# Durable Memory Index\n\n- [User](user.md): User preferences\n",
         encoding="utf-8",
     )
@@ -125,9 +125,9 @@ def test_dream_slash_command_consolidates_daily_log_into_memory_files(tmp_path):
     agent = build_agent(
         tmp_path,
         [
-            '<tool>{"name":"read_file","args":{"path":".pico/memory/MEMORY.md","start":1,"end":50}}</tool>',
-            '<tool>{"name":"write_file","args":{"path":".pico/memory/MEMORY.md","content":"# Durable Memory Index\\n\\n- [User Preferences](topics/user-preferences.md): User preferences\\n"}}</tool>',
-            '<tool>{"name":"write_file","args":{"path":".pico/memory/topics/user-preferences.md","content":"# User Preferences\\n\\n## Notes\\n- Prefers concise reports.\\n"}}</tool>',
+            '<tool>{"name":"read_file","args":{"path":".lcah/memory/MEMORY.md","start":1,"end":50}}</tool>',
+            '<tool>{"name":"write_file","args":{"path":".lcah/memory/MEMORY.md","content":"# Durable Memory Index\\n\\n- [User Preferences](topics/user-preferences.md): User preferences\\n"}}</tool>',
+            '<tool>{"name":"write_file","args":{"path":".lcah/memory/topics/user-preferences.md","content":"# User Preferences\\n\\n## Notes\\n- Prefers concise reports.\\n"}}</tool>',
             "<final>Dream consolidation complete.</final>",
         ],
     )
@@ -138,8 +138,8 @@ def test_dream_slash_command_consolidates_daily_log_into_memory_files(tmp_path):
     assert handled is True
     assert should_exit is False
     assert "Dream consolidation complete" in output
-    assert "User preferences" in (tmp_path / ".pico" / "memory" / "MEMORY.md").read_text(encoding="utf-8")
-    assert "Prefers concise reports" in (tmp_path / ".pico" / "memory" / "topics" / "user-preferences.md").read_text(encoding="utf-8")
+    assert "User preferences" in (tmp_path / ".lcah" / "memory" / "MEMORY.md").read_text(encoding="utf-8")
+    assert "Prefers concise reports" in (tmp_path / ".lcah" / "memory" / "topics" / "user-preferences.md").read_text(encoding="utf-8")
     # dream prompt 是发给 dream 子 agent 的，加了 read step 后总 prompt 数 +1，索引相应调整
     assert "Dream: Memory Consolidation" in agent.model_client.prompts[-4]
 
@@ -162,7 +162,7 @@ def test_dream_cannot_write_outside_memory_directory(tmp_path):
 
 
 def test_skill_frontmatter_metadata_and_argument_substitution(tmp_path):
-    skill_dir = tmp_path / ".pico" / "skills" / "audit"
+    skill_dir = tmp_path / ".lcah" / "skills" / "audit"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
         """---
@@ -196,7 +196,7 @@ Audit ${target} with $ARGUMENTS in ${CLAUDE_SKILL_DIR}.
 
 
 def test_fork_skill_runs_in_isolated_session_and_records_completion(tmp_path):
-    skill_dir = tmp_path / ".pico" / "skills" / "inspect"
+    skill_dir = tmp_path / ".lcah" / "skills" / "inspect"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
         """---
@@ -235,10 +235,10 @@ def test_auto_skill_create_evaluate_register_and_invoke(tmp_path):
         },
     )
 
-    assert "created .pico/skills/csv-summary" in result
+    assert "created .lcah/skills/csv-summary" in result
     assert "evaluation: passed" in result
     assert "csv-summary" in agent.skills
-    assert (tmp_path / ".pico" / "skills" / "csv-summary" / ".memory.md").exists()
+    assert (tmp_path / ".lcah" / "skills" / "csv-summary" / ".memory.md").exists()
 
     handled, should_exit, output = handle_repl_command(agent, "/csv-summary data.csv")
 
@@ -271,7 +271,7 @@ def test_auto_skill_find_read_note_and_status(tmp_path):
     found = agent.run_tool("find_skill", {"query": "schema required fields", "limit": 3})
     read = agent.run_tool("read_skill", {"name": "json-audit", "include_memory": True})
 
-    assert "appended .pico/skills/json-audit/.memory.md" in note_result
+    assert "appended .lcah/skills/json-audit/.memory.md" in note_result
     assert "/json-audit" in found
     assert "schema file" in found
     assert "SKILL.md:" in read
@@ -302,12 +302,12 @@ def test_auto_skill_failed_evaluation_does_not_register(tmp_path):
 
     assert "evaluation: failed" in result
     assert "broken-skill" not in agent.skills
-    status = (tmp_path / ".pico" / "skills" / "broken-skill" / ".autoskill.json").read_text(encoding="utf-8")
+    status = (tmp_path / ".lcah" / "skills" / "broken-skill" / ".autoskill.json").read_text(encoding="utf-8")
     assert '"status": "failed"' in status
 
 
 def test_skill_allowed_tools_restricts_inline_execution(tmp_path):
-    skill_dir = tmp_path / ".pico" / "skills" / "readonly"
+    skill_dir = tmp_path / ".lcah" / "skills" / "readonly"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
         """---
@@ -339,7 +339,7 @@ Use only read tools.
 
 
 def test_disable_model_invocation_skill_returns_expanded_prompt(tmp_path):
-    skill_dir = tmp_path / ".pico" / "skills" / "template"
+    skill_dir = tmp_path / ".lcah" / "skills" / "template"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
         """---
@@ -390,7 +390,7 @@ def test_cli_lists_skills_without_calling_model(tmp_path):
     env = os.environ.copy()
     env["PYTHONPATH"] = os.getcwd()
     result = subprocess.run(
-        [sys.executable, "-m", "pico", "--cwd", str(tmp_path)],
+        [sys.executable, "-m", "lcah", "--cwd", str(tmp_path)],
         input="/skills\n/exit\n",
         text=True,
         capture_output=True,

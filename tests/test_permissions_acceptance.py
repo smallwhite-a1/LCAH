@@ -1,18 +1,18 @@
 import json
 
-from pico.testing import ScriptedModelClient
-from pico import Pico, SessionStore, WorkspaceContext
-from pico.cli import handle_repl_command
-from pico.core.permissions import PermissionDecision
-from pico.features.sandbox.config import SandboxConfig
+from lcah.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
+from lcah.cli import handle_repl_command
+from lcah.core.permissions import PermissionDecision
+from lcah.features.sandbox.config import SandboxConfig
 
 
 def build_agent(tmp_path, outputs=None, **kwargs):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    store = SessionStore(tmp_path / ".pico" / "sessions")
+    store = SessionStore(tmp_path / ".lcah" / "sessions")
     approval_policy = kwargs.pop("approval_policy", "auto")
-    return Pico(
+    return LCAH(
         model_client=ScriptedModelClient(outputs or []),
         workspace=workspace,
         session_store=store,
@@ -96,7 +96,7 @@ def test_plan_mode_switches_tool_profile_and_allows_only_active_plan_file(tmp_pa
     agent = build_agent(
         tmp_path,
         [
-            '<tool name="write_file" path=".pico/plans/v3-plan.md"><content># Plan\n- Gate 1\n</content></tool>',
+            '<tool name="write_file" path=".lcah/plans/v3-plan.md"><content># Plan\n- Gate 1\n</content></tool>',
             "<final>Plan ready.</final>",
         ],
         max_steps=3,
@@ -106,7 +106,7 @@ def test_plan_mode_switches_tool_profile_and_allows_only_active_plan_file(tmp_pa
 
     plan_path = agent.enter_plan_mode("v3")
 
-    assert plan_path == ".pico/plans/v3-plan.md"
+    assert plan_path == ".lcah/plans/v3-plan.md"
     assert agent.active_tool_profile.name == "plan"
     assert "run_shell" not in agent.active_tool_profile.allowed_tools
 
@@ -115,7 +115,7 @@ def test_plan_mode_switches_tool_profile_and_allows_only_active_plan_file(tmp_pa
     )
     assert (
         rejected
-        == "error: plan mode can only write the active plan artifact (.pico/plans/v3-plan.md)"
+        == "error: plan mode can only write the active plan artifact (.lcah/plans/v3-plan.md)"
     )
     assert not (tmp_path / "src.py").exists()
 
@@ -124,7 +124,7 @@ def test_plan_mode_switches_tool_profile_and_allows_only_active_plan_file(tmp_pa
     assert answer == "Plan ready."
     assert agent.active_tool_profile.name == "default"
     assert (
-        (tmp_path / ".pico" / "plans" / "v3-plan.md")
+        (tmp_path / ".lcah" / "plans" / "v3-plan.md")
         .read_text(encoding="utf-8")
         .startswith("# Plan")
     )
@@ -153,7 +153,7 @@ def test_repeated_plan_mode_denial_is_blocked_before_hitting_step_limit(tmp_path
             bad_call,
             bad_call,
             bad_call,
-            '<tool name="write_file" path=".pico/plans/repeat-plan.md"><content># Plan\n- Retry stopped.\n</content></tool>',
+            '<tool name="write_file" path=".lcah/plans/repeat-plan.md"><content># Plan\n- Retry stopped.\n</content></tool>',
             "<final>Plan ready.</final>",
         ],
         max_steps=6,
@@ -192,7 +192,7 @@ def test_plan_mode_does_not_allow_retargeting_active_plan_with_enter_tool(tmp_pa
     )
 
     assert "plan mode" in rejected
-    assert agent.plan_mode.plan_path == ".pico/plans/original-plan.md"
+    assert agent.plan_mode.plan_path == ".lcah/plans/original-plan.md"
 
 
 def test_plan_mode_rejects_arbitrary_workspace_plan_path(tmp_path):
@@ -202,7 +202,7 @@ def test_plan_mode_rejects_arbitrary_workspace_plan_path(tmp_path):
         "enter_plan_mode", {"topic": "retarget", "path": "src/auth.py"}
     )
 
-    assert "plan path must stay under .pico/plans/" in rejected
+    assert "plan path must stay under .lcah/plans/" in rejected
     assert agent.runtime_mode == "default"
 
 
@@ -210,10 +210,10 @@ def test_repl_plan_command_reports_bad_plan_path_without_crashing(tmp_path):
     agent = build_agent(tmp_path)
 
     handled, should_exit, output = handle_repl_command(
-        agent, "/plan auth .pico/plans/../escape.md"
+        agent, "/plan auth .lcah/plans/../escape.md"
     )
 
     assert handled is True
     assert should_exit is False
-    assert output == "error: plan path must stay under .pico/plans/"
+    assert output == "error: plan path must stay under .lcah/plans/"
     assert agent.runtime_mode == "default"

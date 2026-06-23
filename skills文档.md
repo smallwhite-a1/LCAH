@@ -1,6 +1,6 @@
-# pico-v3 Skills 系统文档
+# lcah-v3 Skills 系统文档
 
-Skills 是 pico-v3 中一个可复用的 prompt 工作流系统。每个 skill 是一段 markdown 文件，包含 frontmatter 元数据与 prompt 正文，可以通过 `/skill-name [args]` 从 REPL 或 TUI 调用。Skill 的展开、执行、工具限制和模型切换全部由 runtime 管线统一处理。
+Skills 是 lcah-v3 中一个可复用的 prompt 工作流系统。每个 skill 是一段 markdown 文件，包含 frontmatter 元数据与 prompt 正文，可以通过 `/skill-name [args]` 从 REPL 或 TUI 调用。Skill 的展开、执行、工具限制和模型切换全部由 runtime 管线统一处理。
 
 ---
 
@@ -85,7 +85,7 @@ agent.skills = {...}        ← 存入 runtime 实例
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `source` | `str` | `"builtin"` | 来源标记：`builtin`、`user`、`project`。影响排序优先级。 |
-| `skill_root` | `str` | `""` | SKILL.md 所在目录的绝对路径。用于 `${PICO_SKILL_DIR}` 变量替换。 |
+| `skill_root` | `str` | `""` | SKILL.md 所在目录的绝对路径。用于 `${LCAH_SKILL_DIR}` 变量替换。 |
 
 ### 模型提示
 
@@ -123,7 +123,7 @@ def render(self, arguments=""):
     text = self.prompt_fn(str(arguments)) if self.prompt_fn else self.prompt
     replacements = {
         "$ARGUMENTS": str(arguments),
-        "${PICO_SKILL_DIR}": self.skill_root,
+        "${LCAH_SKILL_DIR}": self.skill_root,
         "${CLAUDE_SKILL_DIR}": self.skill_root,
     }
     if self.argument_hint:
@@ -135,7 +135,7 @@ def render(self, arguments=""):
 
 支持三种变量替换语法：
 - `$ARGUMENTS` — 所有传入参数
-- `${PICO_SKILL_DIR}` / `${CLAUDE_SKILL_DIR}` — skill 文件所在目录的绝对路径
+- `${LCAH_SKILL_DIR}` / `${CLAUDE_SKILL_DIR}` — skill 文件所在目录的绝对路径
 - `${argument_hint}` — 如果设置了 `argument-hint: target`，则 `${target}` 也会被替换为 arguments
 
 ### metadata() 方法
@@ -247,12 +247,12 @@ paths: src/**/*.py, tests/    # 关联路径，支持 glob，! 前缀排除
 
 ```
 1. 内置 skills (skills_bundled.py)          → source = "builtin"
-2. 用户 skills (~/.pico/skills/<name>/)     → source = "user"
+2. 用户 skills (~/.lcah/skills/<name>/)     → source = "user"
 3. 项目 skills (<repo>/skills/<name>/)       → source = "project"
-4. 项目 skills (<repo>/.pico/skills/<name>/) → source = "project"
+4. 项目 skills (<repo>/.lcah/skills/<name>/) → source = "project"
 ```
 
-**同名覆盖**：后加载的 skill 覆盖先加载的同名 skill。也就是说，项目的 `.pico/skills/review/SKILL.md` 会覆盖内置的 `review` skill。
+**同名覆盖**：后加载的 skill 覆盖先加载的同名 skill。也就是说，项目的 `.lcah/skills/review/SKILL.md` 会覆盖内置的 `review` skill。
 
 这个设计允许：
 - 项目级定制内置 skill 的行为
@@ -266,9 +266,9 @@ def discover_skills(root, home=None):
     from .skills_bundled import bundled_skills
     skills = {skill.name: skill for skill in bundled_skills()}
     search_roots = [
-        (Path(home or Path.home()) / ".pico" / "skills", "user"),
+        (Path(home or Path.home()) / ".lcah" / "skills", "user"),
         (Path(root) / "skills", "project"),
-        (Path(root) / ".pico" / "skills", "project"),
+        (Path(root) / ".lcah" / "skills", "project"),
     ]
     for directory, source in search_roots:
         for skill in load_skills_from_dir(directory, source=source):
@@ -294,13 +294,13 @@ def load_skills_from_dir(skills_dir, source):
 
 ### 不触发重新发现
 
-与 pico 的 skill 系统不同，pico-v3 的 skills **在启动时一次性加载**，运行时不会像 `refresh_prefix()` 那样重新扫描 skills 目录。这意味着在 session 运行时新增或修改 skill 文件**不会**实时生效，需要重新启动 pico。
+与 lcah 的 skill 系统不同，lcah-v3 的 skills **在启动时一次性加载**，运行时不会像 `refresh_prefix()` 那样重新扫描 skills 目录。这意味着在 session 运行时新增或修改 skill 文件**不会**实时生效，需要重新启动 lcah。
 
 ---
 
 ## 5. 内置 Skills
 
-pico-v3 内置 4 个 skill，定义在 `features/skills_bundled.py`。它们都使用 `prompt_fn` 动态生成 prompt，支持 `$ARGUMENTS` 参数。
+lcah-v3 内置 4 个 skill，定义在 `features/skills_bundled.py`。它们都使用 `prompt_fn` 动态生成 prompt，支持 `$ARGUMENTS` 参数。
 
 ### 5.1 `/review` — 代码审查
 
@@ -414,7 +414,7 @@ allowed-tools: read_file, search, list_files
 
 ### 6.2 项目级覆盖内置 Skill
 
-如果想定制 `review` 的行为，在项目中创建 `.pico/skills/review/SKILL.md`：
+如果想定制 `review` 的行为，在项目中创建 `.lcah/skills/review/SKILL.md`：
 
 ```markdown
 ---
@@ -440,7 +440,7 @@ allowed-tools: read_file, search, list_files, run_shell
 
 ### 6.3 用户级全局 Skill
 
-创建 `~/.pico/skills/explain/SKILL.md`：
+创建 `~/.lcah/skills/explain/SKILL.md`：
 
 ```markdown
 ---
@@ -478,7 +478,7 @@ allowed-tools: search, read_file, list_files
 3. 发现潜在问题
 ```
 
-`fork` 模式下，skill 在子 Pico 实例中执行：
+`fork` 模式下，skill 在子 LCAH 实例中执行：
 - 独立的 session 和历史
 - 不占用父 session 的上下文窗口
 - 结果返回后子实例销毁
@@ -501,7 +501,7 @@ disable-model-invocation: true
 5. 生产环境配置已复查
 ```
 
-调用 `/checklist` 时，pico 只渲染这段文本并显示，不会调用模型。
+调用 `/checklist` 时，lcah 只渲染这段文本并显示，不会调用模型。
 
 ### 6.6 模型覆写 Skill
 
@@ -550,7 +550,7 @@ Skills 在 prompt 中有两层注入。
 在 `build_prefix()` 中直接写入系统规则：
 
 ```
-- When creating Pico skill files at .pico/skills/<name>/SKILL.md or skills/<name>/SKILL.md, use frontmatter:
+- When creating LCAH skill files at .lcah/skills/<name>/SKILL.md or skills/<name>/SKILL.md, use frontmatter:
 ---
 name: audit
 description: Audit a file
@@ -894,7 +894,7 @@ Fork 模式的 skill 会在 session store 中留下子 session。可以通过 `/
 
 ### 12.4 事件流调试
 
-Skill 执行过程中的事件会写入 `.pico/sessions/<id>.events.jsonl`：
+Skill 执行过程中的事件会写入 `.lcah/sessions/<id>.events.jsonl`：
 
 ```json
 {"event": "skill_invoked", "skill": "review", "source": "builtin", ...}

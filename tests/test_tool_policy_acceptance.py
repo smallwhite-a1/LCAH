@@ -2,15 +2,15 @@ import json
 import shlex
 import sys
 
-from pico.testing import ScriptedModelClient
-from pico import Pico, SessionStore, WorkspaceContext
+from lcah.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
 
 
 def build_agent(tmp_path, outputs=None, **kwargs):
     (tmp_path / "README.md").write_text("hello world\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    store = SessionStore(tmp_path / ".pico" / "sessions")
-    return Pico(
+    store = SessionStore(tmp_path / ".lcah" / "sessions")
+    return LCAH(
         model_client=ScriptedModelClient(outputs or []),
         workspace=workspace,
         session_store=store,
@@ -26,33 +26,33 @@ def read_jsonl(path):
 def test_patch_requires_prior_fresh_read_and_allows_after_read(tmp_path):
     agent = build_agent(tmp_path)
 
-    rejected = agent.run_tool("patch_file", {"path": "README.md", "old_text": "world", "new_text": "pico"})
+    rejected = agent.run_tool("patch_file", {"path": "README.md", "old_text": "world", "new_text": "lcah"})
 
     assert "read_file" in rejected
     assert agent._last_tool_result_metadata["tool_error_code"] == "prior_read_required"
     assert (tmp_path / "README.md").read_text(encoding="utf-8") == "hello world\n"
 
     agent.run_tool("read_file", {"path": "README.md", "start": 1, "end": 1})
-    patched = agent.run_tool("patch_file", {"path": "README.md", "old_text": "world", "new_text": "pico"})
+    patched = agent.run_tool("patch_file", {"path": "README.md", "old_text": "world", "new_text": "lcah"})
 
     assert patched == "patched README.md"
-    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "hello pico\n"
+    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "hello lcah\n"
 
 
 def test_rejected_patch_can_be_retried_after_informing_read(tmp_path):
     agent = build_agent(
         tmp_path,
         [
-            '<tool name="patch_file" path="README.md"><old_text>world</old_text><new_text>pico</new_text></tool>',
+            '<tool name="patch_file" path="README.md"><old_text>world</old_text><new_text>lcah</new_text></tool>',
             '<tool>{"name":"read_file","args":{"path":"README.md","start":1,"end":1}}</tool>',
-            '<tool name="patch_file" path="README.md"><old_text>world</old_text><new_text>pico</new_text></tool>',
+            '<tool name="patch_file" path="README.md"><old_text>world</old_text><new_text>lcah</new_text></tool>',
             "<final>done</final>",
         ],
         max_steps=4,
     )
 
     assert agent.ask("retry a patch only after reading the target file") == "done"
-    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "hello pico\n"
+    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "hello lcah\n"
 
     trace = read_jsonl(agent.current_run_dir / "trace.jsonl")
     patch_events = [

@@ -1,12 +1,12 @@
 # 子 agent、计划模式和 Todo：控制面怎么长出来
 
-Pico 的子 agent 是主 runtime 下面的受限 child run。它解决长任务里的分工问题：主 agent 不应该把所有探索、修改和跟进都塞在一个上下文里，子 agent 也不能变成没有边界的第二个全能 agent。
+LCAH 的子 agent 是主 runtime 下面的受限 child run。它解决长任务里的分工问题：主 agent 不应该把所有探索、修改和跟进都塞在一个上下文里，子 agent 也不能变成没有边界的第二个全能 agent。
 
 ![子 agent、计划模式和 Todo](assets/05-workers-plan-todo.png)
 
 ## WorkerManager 管生命周期
 
-`pico/core/worker_manager.py` 负责 worker 的生命周期：
+`lcah/core/worker_manager.py` 负责 worker 的生命周期：
 
 - `spawn()` 创建任务。
 - `continue_task()` 续接 idle worker。
@@ -16,11 +16,11 @@ Pico 的子 agent 是主 runtime 下面的受限 child run。它解决长任务�
 
 每个 worker 是一个 `WorkerTask`，包含 id、description、subagent_type、write_scope、child runtime、thread、stop flag 和 runtime state。
 
-最关键的是 `_new_task()`。它会调用 `build_child_runtime()` 生成一个新的 `Pico` 子 runtime，而不是只把 prompt 传给同一个 agent。
+最关键的是 `_new_task()`。它会调用 `build_child_runtime()` 生成一个新的 `LCAH` 子 runtime，而不是只把 prompt 传给同一个 agent。
 
 ## Explore 和 worker 的边界
 
-Pico 现在支持两类子 agent：
+LCAH 现在支持两类子 agent：
 
 - `Explore`：只读，approval policy 是 `never`，tool profile 是 `readonly`。
 - `worker`：可写但必须受 `write_scope` 约束，tool profile 是 `worker`，并且不暴露 `run_shell`。
@@ -47,12 +47,12 @@ plan mode 下只能启动 `Explore`。这是一个很重要的边界，因为计
 
 ## Plan mode 是写边界，不只是提示词
 
-`pico/core/plan_mode.py` 进入计划模式后，会把 session 的 `runtime_mode` 改成：
+`lcah/core/plan_mode.py` 进入计划模式后，会把 session 的 `runtime_mode` 改成：
 
 ```text
 mode: plan
 topic: ...
-plan_path: .pico/plans/<topic>-plan.md
+plan_path: .lcah/plans/<topic>-plan.md
 ```
 
 同时切换 tool profile 到 `plan`，刷新 prefix。plan 模式下：
@@ -67,7 +67,7 @@ plan_path: .pico/plans/<topic>-plan.md
 
 ## TodoLedger 是运行时任务账本
 
-`pico/core/todo_ledger.py` 管 session-scoped todo。它支持 `pending / in_progress / done / blocked` 和 `low / normal / high`，每次 add/update 都会写 session、发 event，并记录到当前 `TaskState.todo_changes`。
+`lcah/core/todo_ledger.py` 管 session-scoped todo。它支持 `pending / in_progress / done / blocked` 和 `low / normal / high`，每次 add/update 都会写 session、发 event，并记录到当前 `TaskState.todo_changes`。
 
 Todo 会进入 `ContextManager` 的 memory section。模型下一轮能看到当前任务账本，run report 也能记录 todo 变化，所以它不是 UI 装饰。
 
@@ -75,9 +75,9 @@ Todo 会进入 `ContextManager` 的 memory section。模型下一轮能看到当
 
 Claude Code 在这一层明显更大。它有 `AgentTool`、`SendMessageTool`、`TaskCreateTool`、`TaskUpdateTool`、`TaskStopTool`、TeamCreate/TeamDelete、local/remote/in-process teammate、worktree 模式和任务输出文件。`Task.ts` 里 task type 也更细，能区分 local bash、local agent、remote agent、workflow、monitor、dream。
 
-Pico 当前只做了最小控制面：
+LCAH 当前只做了最小控制面：
 
-| 维度 | Pico | Claude Code |
+| 维度 | LCAH | Claude Code |
 | --- | --- | --- |
 | 子 agent 类型 | Explore / worker | local agent、remote agent、in-process teammate、team |
 | 续接 | `send_message` 续接 child runtime | resume agent、teammate mailbox、task output |
@@ -87,7 +87,7 @@ Pico 当前只做了最小控制面：
 
 ## 当前取舍
 
-Pico 的子 agent 设计最值得保留的点是边界清楚：Explore 只能读，worker 不能 shell，写入必须有 scope，plan mode 不能启动 worker。这个取舍比一开始做复杂多 agent 协作更重要。
+LCAH 的子 agent 设计最值得保留的点是边界清楚：Explore 只能读，worker 不能 shell，写入必须有 scope，plan mode 不能启动 worker。这个取舍比一开始做复杂多 agent 协作更重要。
 
 下一步可以补三层：一是 worker output artifact 更系统地纳入主 report；二是 worker 的 tool profile 再细分，比如允许测试但不允许任意 shell；三是 plan mode 和 todo ledger 形成更明确的交付门槛，比如计划项必须全部 done 或有 blocked reason 才允许退出计划。
 
@@ -95,7 +95,7 @@ Pico 的子 agent 设计最值得保留的点是边界清楚：Explore 只能读
 
 单 agent loop 最大的问题不是不能完成任务，而是所有状态都挤在同一个上下文里。探索、计划、修改、验证、复盘、子任务结果全部混在一起时，模型很容易忘记边界。
 
-Pico v3 引入 plan、todo、worker，本质是在主循环外面建立复杂任务控制面。
+LCAH v3 引入 plan、todo、worker，本质是在主循环外面建立复杂任务控制面。
 
 ```text
 Plan mode: 限制写入范围，先形成计划 artifact
@@ -106,7 +106,7 @@ Notification queue: 把子任务结果回流主循环
 
 ### Plan mode 为什么必须是 runtime mode
 
-如果 plan mode 只是 prompt 文案，模型仍然可能调用写工具改源码。Pico 的设计是把 plan mode 写进 runtime state，并切换 tool profile。
+如果 plan mode 只是 prompt 文案，模型仍然可能调用写工具改源码。LCAH 的设计是把 plan mode 写进 runtime state，并切换 tool profile。
 
 这带来三个效果：
 
@@ -118,7 +118,7 @@ Notification queue: 把子任务结果回流主循环
 
 ### TodoLedger 为什么不是 UI 装饰
 
-Todo 如果只显示在 TUI，模型下一轮不一定看得到。Pico 的 TodoLedger 是 session state：
+Todo 如果只显示在 TUI，模型下一轮不一定看得到。LCAH 的 TodoLedger 是 session state：
 
 - add/update 会写 session。
 - todo changes 会进入 TaskState。
@@ -129,7 +129,7 @@ Todo 如果只显示在 TUI，模型下一轮不一定看得到。Pico 的 TodoL
 
 ### Worker 是受限 child runtime
 
-Pico 的 worker 不是“另一个完全自由的 agent”。它是由 parent runtime 构造出来的 child `Pico`，带着更窄的工具 profile 和写边界。
+LCAH 的 worker 不是“另一个完全自由的 agent”。它是由 parent runtime 构造出来的 child `LCAH`，带着更窄的工具 profile 和写边界。
 
 当前有两类：
 
@@ -145,7 +145,7 @@ Pico 的 worker 不是“另一个完全自由的 agent”。它是由 parent ru
 
 ### notification 回流是协作的关键
 
-子 agent 结果如果只写在自己上下文里，主 agent 不会自然知道。Pico 通过 notification queue 把 worker 完成消息注入主 history/prompt。
+子 agent 结果如果只写在自己上下文里，主 agent 不会自然知道。LCAH 通过 notification queue 把 worker 完成消息注入主 history/prompt。
 
 这件事看起来像 UI 细节，其实是多 agent 协作的核心。主 agent 必须看到：
 
@@ -165,7 +165,7 @@ Pico 的 worker 不是“另一个完全自由的 agent”。它是由 parent ru
 created -> queued -> running -> waiting -> completed/failed/canceled/archived
 ```
 
-任务对象可能有 output file、owner、parent tool use id、remote/local type、UI progress、kill handler、resume handle。Pico 当前只有轻量 WorkerTask 和 TodoLedger，但已经覆盖了最小必要边界：spawn、continue、stop、notification、write_scope。
+任务对象可能有 output file、owner、parent tool use id、remote/local type、UI progress、kill handler、resume handle。LCAH 当前只有轻量 WorkerTask 和 TodoLedger，但已经覆盖了最小必要边界：spawn、continue、stop、notification、write_scope。
 
 ### 失败模式和防线
 

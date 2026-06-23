@@ -1,6 +1,6 @@
-# pico-v3 Memory 系统改进详解
+# lcah-v3 Memory 系统改进详解
 
-本文档深入分析 pico-v3 在 pico 基础上的 Memory 系统改进，从架构设计、数据流、关键机制到具体代码实现逐层展开。
+本文档深入分析 lcah-v3 在 lcah 基础上的 Memory 系统改进，从架构设计、数据流、关键机制到具体代码实现逐层展开。
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## 1. 总览：从单层到三层体系
 
-### pico 的记忆模型
+### lcah 的记忆模型
 
 ```
 ┌──────────────────────────────────┐
@@ -38,14 +38,14 @@
 └──────────────────────────────────┘
 ```
 
-pico 只有一层工作记忆。它是 session 内有效的短期记忆，session 结束后只能通过恢复旧 session 才能找回。所有记忆都是易失的，没有跨 session 的持久化机制。
+lcah 只有一层工作记忆。它是 session 内有效的短期记忆，session 结束后只能通过恢复旧 session 才能找回。所有记忆都是易失的，没有跨 session 的持久化机制。
 
-### pico-v3 的记忆模型
+### lcah-v3 的记忆模型
 
 ```
 ┌────────────────────────────────────────────────────────────┐
 │                     Durable Topics                          │
-│              .pico/memory/topics/*.md                       │
+│              .lcah/memory/topics/*.md                       │
 │                                                             │
 │  project-conventions   key-decisions                        │
 │  dependency-facts      user-preferences                     │
@@ -58,7 +58,7 @@ pico 只有一层工作记忆。它是 session 内有效的短期记忆，sessio
                           │
 ┌────────────────────────────────────────────────────────────┐
 │                      Daily Logs                             │
-│          .pico/memory/logs/YYYY/MM/YYYY-MM-DD.md            │
+│          .lcah/memory/logs/YYYY/MM/YYYY-MM-DD.md            │
 │                                                             │
 │  由 /remember 或 <memory> 标签写入                          │
 │  追加写入，时间戳标注，不可变                                │
@@ -80,7 +80,7 @@ pico 只有一层工作记忆。它是 session 内有效的短期记忆，sessio
 
 ### 规模对比
 
-| 维度 | pico | pico-v3 |
+| 维度 | lcah | lcah-v3 |
 |------|------|---------|
 | 代码行数 | ~410 行 | ~1227 行 |
 | 记忆层数 | 1 层 | 3 层 |
@@ -95,11 +95,11 @@ pico 只有一层工作记忆。它是 session 内有效的短期记忆，sessio
 
 ## 2. 第一层：Working Memory（工作记忆）的增强
 
-pico-v3 的 Working Memory 在 pico 的基础上进行了以下增强：
+lcah-v3 的 Working Memory 在 lcah 的基础上进行了以下增强：
 
 ### 2.1 note 结构增加 `kind` 字段
 
-pico 的 episodic note 结构：
+lcah 的 episodic note 结构：
 ```python
 {
     "text": "...",
@@ -110,7 +110,7 @@ pico 的 episodic note 结构：
 }
 ```
 
-pico-v3 增加了 `kind` 字段：
+lcah-v3 增加了 `kind` 字段：
 ```python
 {
     "text": "...",
@@ -129,7 +129,7 @@ pico-v3 增加了 `kind` 字段：
 
 ### 2.2 Process Note（过程笔记）
 
-v3 新增了 `record_process_note_for_tool()` 函数（在 `Pico` 类中），当工具执行返回 `partial_success`、`error`、`rejected` 状态时自动记录过程笔记：
+v3 新增了 `record_process_note_for_tool()` 函数（在 `LCAH` 类中），当工具执行返回 `partial_success`、`error`、`rejected` 状态时自动记录过程笔记：
 
 ```python
 def record_process_note_for_tool(self, name, metadata):
@@ -144,9 +144,9 @@ def record_process_note_for_tool(self, name, metadata):
 
 ### 2.3 File Summary 支持 freshness 检测
 
-pico 的 file_summaries 存储了 freshness（文件 hash），但在工作记忆中缺乏主动失效机制。
+lcah 的 file_summaries 存储了 freshness（文件 hash），但在工作记忆中缺乏主动失效机制。
 
-pico-v3 增加了 `invalidate_stale_file_summaries()` 函数：在每次 `evaluate_resume_state()` 时主动检查所有 file summary 的 freshness 是否仍然匹配当前文件内容，将不匹配的标记为 expired。
+lcah-v3 增加了 `invalidate_stale_file_summaries()` 函数：在每次 `evaluate_resume_state()` 时主动检查所有 file summary 的 freshness 是否仍然匹配当前文件内容，将不匹配的标记为 expired。
 
 ```python
 def invalidate_stale_file_summaries(state, workspace_root=None):
@@ -163,10 +163,10 @@ def invalidate_stale_file_summaries(state, workspace_root=None):
 
 ### 2.4 Working Memory 中引用 Durable Topics
 
-pico-v3 的 `normalize_memory_state()` 在末尾会读取 durable topics 的 slug 列表，将其注入到 working memory state 中：
+lcah-v3 的 `normalize_memory_state()` 在末尾会读取 durable topics 的 slug 列表，将其注入到 working memory state 中：
 
 ```python
-durable_root = Path(workspace_root) / ".pico" / "memory"
+durable_root = Path(workspace_root) / ".lcah" / "memory"
 durable_store = DurableMemoryStore(durable_root)
 state["durable_topics"] = durable_store.topic_slugs()
 ```
@@ -204,12 +204,12 @@ def is_effectively_empty(state, workspace_root=None):
 
 ## 3. 第二层：Daily Logs（每日日志）
 
-Daily Logs 是 pico-v3 全新引入的记忆中间层，它是记忆系统的主要摄入通道。
+Daily Logs 是 lcah-v3 全新引入的记忆中间层，它是记忆系统的主要摄入通道。
 
 ### 3.1 数据模型
 
 ```
-.pico/memory/logs/
+.lcah/memory/logs/
 ├── 2026/
 │   └── 05/
 │       ├── 2026-05-14.md
@@ -231,7 +231,7 @@ Daily Logs 是 pico-v3 全新引入的记忆中间层，它是记忆系统的主
 
 **方式一：`/remember <text>` 命令**
 ```python
-# cli.py → Pico.remember_durable_note()
+# cli.py → LCAH.remember_durable_note()
 def remember_durable_note(self, text):
     path = memorylib.append_to_daily_log(self.memory_dir, text)
     # ...emit session event...
@@ -271,7 +271,7 @@ Durable Topics 是长期记忆的最终形态，按主题分文件组织，跨 s
 ### 4.1 数据模型
 
 ```
-.pico/memory/
+.lcah/memory/
 ├── MEMORY.md                        # 索引文件
 ├── topics/
 │   ├── project-conventions.md       # 项目约定
@@ -386,7 +386,7 @@ DURABLE_MEMORY_LINE_PATTERNS = (
 
 ## 5. 核心机制：Auto-Dream（自动整合）
 
-Auto-Dream 是 pico-v3 记忆系统最核心的创新：**一个后台线程中的独立 agent 实例，专门负责将 daily logs 整合成 durable topics**。
+Auto-Dream 是 lcah-v3 记忆系统最核心的创新：**一个后台线程中的独立 agent 实例，专门负责将 daily logs 整合成 durable topics**。
 
 ### 5.1 触发条件
 
@@ -433,7 +433,7 @@ _background_dream() [daemon thread]
     │
     ├── run_dream(agent, quiet=True, session_ids=...)
     │   │
-    │   ├── 创建独立的 dream_agent (Pico 子实例)
+    │   ├── 创建独立的 dream_agent (LCAH 子实例)
     │   │   - approval_policy="auto"
     │   │   - max_steps=max(agent.max_steps, 20)
     │   │   - max_new_tokens=max(agent.max_new_tokens, 4096)
@@ -522,7 +522,7 @@ DREAM_MIN_NEW_TOKENS = 4096  # dream agent 的最小输出 token
 
 ## 6. Durable Promotion：从回答中提取长期记忆
 
-pico-v3 新增了从模型的 final answer 中自动识别并提升记忆内容的机制。
+lcah-v3 新增了从模型的 final answer 中自动识别并提升记忆内容的机制。
 
 ### 6.1 触发条件
 
@@ -589,7 +589,7 @@ if new_subject:
 
 ## 7. Memory System Section：注入给模型的记忆契约
 
-pico-v3 通过 `build_memory_system_section()` 生成一段约 160 行的系统指令，作为 prompt 的一部分注入给模型（不仅对用户可见，也对 dream agent 可见）。
+lcah-v3 通过 `build_memory_system_section()` 生成一段约 160 行的系统指令，作为 prompt 的一部分注入给模型（不仅对用户可见，也对 dream agent 可见）。
 
 这段指令定义了：
 
@@ -634,9 +634,9 @@ SECRET_SHAPED_TEXT_PATTERN = re.compile(
 
 ## 9. 内存与召回：跨层统一检索
 
-### 9.1 pico 的检索
+### 9.1 lcah 的检索
 
-pico 的 `retrieval_candidates()` 只在当前 session 的 episodic_notes 中检索：
+lcah 的 `retrieval_candidates()` 只在当前 session 的 episodic_notes 中检索：
 
 ```python
 def retrieval_candidates(state, query, limit=3, workspace_root=None):
@@ -647,9 +647,9 @@ def retrieval_candidates(state, query, limit=3, workspace_root=None):
     return [note for _, note in ranked[:limit]]
 ```
 
-### 9.2 pico-v3 的跨层检索
+### 9.2 lcah-v3 的跨层检索
 
-pico-v3 的检索先查 episodic_notes，**再查 durable topics**，合并排序后返回：
+lcah-v3 的检索先查 episodic_notes，**再查 durable topics**，合并排序后返回：
 
 ```python
 def retrieval_candidates(state, query, limit=3, workspace_root=None):
@@ -660,7 +660,7 @@ def retrieval_candidates(state, query, limit=3, workspace_root=None):
     
     # 2. 检索 durable topics（长期）
     if workspace_root is not None:
-        durable_store = DurableMemoryStore(Path(workspace_root) / ".pico" / "memory")
+        durable_store = DurableMemoryStore(Path(workspace_root) / ".lcah" / "memory")
         for note in durable_store.retrieval_candidates(query, limit=limit):
             ...
     
@@ -668,7 +668,7 @@ def retrieval_candidates(state, query, limit=3, workspace_root=None):
     return [note for _, note in ranked[:limit]]
 ```
 
-排分依据（与 pico 相同，保留了简单透明的设计原则）：
+排分依据（与 lcah 相同，保留了简单透明的设计原则）：
 1. **exact_tag_match**：query tokens 是否命中了 note 的 tags（精确匹配权重最高）
 2. **keyword_overlap**：query tokens 和 note 文本/source/tags 的重叠词数
 3. **recency**：created_at 时间戳（越新越优先）
@@ -682,7 +682,7 @@ def retrieval_candidates(state, query, limit=3, workspace_root=None):
 
 ## 10. 事件与可观测性
 
-pico-v3 将记忆操作全面接入 session event bus 和 trace 系统：
+lcah-v3 将记忆操作全面接入 session event bus 和 trace 系统：
 
 ### 10.1 Session Events
 
@@ -727,9 +727,9 @@ pico-v3 将记忆操作全面接入 session event bus 和 trace 系统：
 
 ## 11. 用户交互命令
 
-pico-v3 新增了 4 个与记忆相关的 slash 命令：
+lcah-v3 新增了 4 个与记忆相关的 slash 命令：
 
-| 命令 | pico | pico-v3 | 说明 |
+| 命令 | lcah | lcah-v3 | 说明 |
 |------|------|---------|------|
 | `/memory` | 显示工作记忆 | 显示 durable memory index（MEMORY.md） | 行为改变 |
 | `/working-memory` | 无 | 显示当前工作记忆 | 新增 |
@@ -740,7 +740,7 @@ pico-v3 新增了 4 个与记忆相关的 slash 命令：
 
 ## 12. 总结对照表
 
-| 特性 | pico | pico-v3 |
+| 特性 | lcah | lcah-v3 |
 |------|------|---------|
 | **记忆架构** | 单层 Working Memory | 三层：Working + Daily Logs + Durable Topics |
 | **跨 session 持久** | 需手动恢复 session | 自动文件持久化 |
@@ -760,5 +760,5 @@ pico-v3 新增了 4 个与记忆相关的 slash 命令：
 | **Prompt 注入** | 无 | Memory System Section 契约 |
 | **事件可观测** | 无 | Session events + Trace events + Report audit |
 | **用户/模型交互** | 仅 /memory | /memory, /working-memory, /remember, /dream |
-| **Dream Agent** | - | 独立 Pico 子实例，受限 write_scope |
+| **Dream Agent** | - | 独立 LCAH 子实例，受限 write_scope |
 | **代码规模** | ~410 行 | ~1227 行（~3x） |

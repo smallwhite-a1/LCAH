@@ -1,14 +1,14 @@
-# Pico v3 testing
+# LCAH v3 testing
 
 The v3 acceptance package is a real-use scenario suite, not a unit-test index.
-It drives Pico through CLI, REPL, slash command, resume, provider profile,
-skills, worker, memory, and artifact flows, then verifies the files Pico wrote.
+It drives LCAH through CLI, REPL, slash command, resume, provider profile,
+skills, worker, memory, and artifact flows, then verifies the files LCAH wrote.
 
 ## Final Result
 
 ```text
 uv run python scripts/run_v3_human_scenario_gate.py --suite full
-{"failed": 0, "output_dir": "/private/tmp/pico-v3-human-scenarios/20260513-170838", "passed": 50, "status": "passed"}
+{"failed": 0, "output_dir": "/private/tmp/lcah-v3-human-scenarios/20260513-170838", "passed": 50, "status": "passed"}
 ```
 
 ```text

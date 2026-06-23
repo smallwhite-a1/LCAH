@@ -30,7 +30,7 @@ htmlcov/
 # Local scratch space
 tmp/
 .worktrees/
-.pico/
+.lcah/
 artifacts/
 readme_intro_locked/
 
@@ -38,8 +38,8 @@ readme_intro_locked/
 .env
 .env.*
 !.env.example
-.pico.toml
-!.pico.toml.example
+.lcah.toml
+!.lcah.toml.example
 
 # Local docs not intended for publication
 docs/**
@@ -53,4 +53,4 @@ docs/**
 .DS_Store
 
 # Packaging metadata
-pico.egg-info/
+lcah.egg-info/

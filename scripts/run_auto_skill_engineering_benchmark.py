@@ -24,9 +24,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pico import Pico, SessionStore, WorkspaceContext
-from pico.cli import handle_repl_command
-from pico.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
+from lcah.cli import handle_repl_command
+from lcah.testing import ScriptedModelClient
 
 EXPLORE_TOOLS = {"list_files", "read_file", "search"}
 PYTHON = shlex.quote(sys.executable)
@@ -147,17 +147,17 @@ def _run_scenario(root: Path, scenario: Scenario) -> dict:
     }
 
 
-def _agent(root: Path, outputs: list[str]) -> Pico:
-    return Pico(
+def _agent(root: Path, outputs: list[str]) -> LCAH:
+    return LCAH(
         model_client=ScriptedModelClient(outputs),
         workspace=WorkspaceContext.build(root),
-        session_store=SessionStore(root / ".pico" / "sessions"),
+        session_store=SessionStore(root / ".lcah" / "sessions"),
         approval_policy="auto",
         max_steps=20,
     )
 
 
-def _metrics(agent: Pico, verifier_command: str = "") -> dict:
+def _metrics(agent: LCAH, verifier_command: str = "") -> dict:
     tool_items = [item for item in agent.session["history"] if item.get("role") == "tool"]
     tools = [item["name"] for item in tool_items]
     verifier_failures = 0
@@ -231,7 +231,7 @@ def _table_mode_comparison(results: list[dict]) -> dict:
 
 
 def _install_curated_skill(root: Path, scenario: Scenario) -> None:
-    skill_dir = root / ".pico" / "skills" / scenario.skill_name
+    skill_dir = root / ".lcah" / "skills" / scenario.skill_name
     skill_dir.mkdir(parents=True)
     skill_dir.joinpath("SKILL.md").write_text(
         "\n".join(

@@ -1,12 +1,12 @@
 # Runtime 和 Engine：一条请求怎么被推进
 
-Pico 当前最关键的架构变化，是把运行时对象图和 turn 级执行循环分开了。`Pico` 更像运行现场，`Engine` 负责把一次用户请求推进到底。
+LCAH 当前最关键的架构变化，是把运行时对象图和 turn 级执行循环分开了。`LCAH` 更像运行现场，`Engine` 负责把一次用户请求推进到底。
 
 ![Runtime 与 Engine 控制流](assets/02-runtime-engine.png)
 
-## Pico runtime 负责装配现场
+## LCAH runtime 负责装配现场
 
-`pico/core/runtime.py` 里的 `Pico.__init__()` 把系统运行需要的对象一次性挂好：
+`lcah/core/runtime.py` 里的 `LCAH.__init__()` 把系统运行需要的对象一次性挂好：
 
 - `model_client` 和 `model_client_factory`
 - `workspace`、`root`、`session_store`、`run_store`
@@ -20,7 +20,7 @@ Pico 当前最关键的架构变化，是把运行时对象图和 turn 级执行
 
 ## Engine.run_turn() 负责推进控制流
 
-`pico/core/engine.py` 的 `run_turn()` 是 turn 级状态机。它先创建 `TaskState` 和 run 目录，然后进入循环：
+`lcah/core/engine.py` 的 `run_turn()` 是 turn 级状态机。它先创建 `TaskState` 和 run 目录，然后进入循环：
 
 ```text
 create TaskState
@@ -43,22 +43,22 @@ finish limited run when step/retry budget exceeded
 
 第三，结束不是简单 return。成功结束时会写 assistant history，必要时退出 plan mode，promote durable memory，触发 memory maintenance，创建 checkpoint，写 task state、trace 和 report。
 
-## model_output 是 Pico 的文本协议边界
+## model_output 是 LCAH 的文本协议边界
 
-`pico/core/model_output.py` 把模型原始文本解析成四类：
+`lcah/core/model_output.py` 把模型原始文本解析成四类：
 
 - `tool`：单个工具调用
 - `tools`：多个工具调用
 - `final`：最终回答
 - `retry`：输出不符合协议，需要模型重来
 
-Pico 没有直接使用 provider 原生 tool calling，而是定义了 `<tool>...</tool>` 和 `<final>...</final>` 文本协议。这个选择让 OpenAI-compatible、Anthropic-compatible、DeepSeek 走同一条 runtime 逻辑，但代价是模型必须遵守文本格式，malformed response 要靠 retry notice 拉回。
+LCAH 没有直接使用 provider 原生 tool calling，而是定义了 `<tool>...</tool>` 和 `<final>...</final>` 文本协议。这个选择让 OpenAI-compatible、Anthropic-compatible、DeepSeek 走同一条 runtime 逻辑，但代价是模型必须遵守文本格式，malformed response 要靠 retry notice 拉回。
 
-这里可以和最小 agent 实现对照看。最小实现往往直接用模型 API 的原生 tool-use 格式，上下文格式更贴近单一后端。Pico 选择文本协议，是为了 provider 统一和测试可控。
+这里可以和最小 agent 实现对照看。最小实现往往直接用模型 API 的原生 tool-use 格式，上下文格式更贴近单一后端。LCAH 选择文本协议，是为了 provider 统一和测试可控。
 
 ## tool_executor 是动作边界
 
-`pico/core/tool_executor.py` 负责工具执行的统一边界，顺序大概是：
+`lcah/core/tool_executor.py` 负责工具执行的统一边界，顺序大概是：
 
 1. 查 registry，未知工具直接拒绝。
 2. 调 `validate_tool()` 做参数和路径校验。
@@ -72,7 +72,7 @@ Pico 没有直接使用 provider 原生 tool calling，而是定义了 `<tool>..
 
 ## 和 Claude Code 的 QueryEngine 对比
 
-Claude Code 的 `QueryEngine.ts` 更像 Pico 的 `Runtime + Engine + CLI/TUI 交界` 的组合。它在 `submitMessage()` 里做了很多 Pico 目前还拆得比较简单的事情：
+Claude Code 的 `QueryEngine.ts` 更像 LCAH 的 `Runtime + Engine + CLI/TUI 交界` 的组合。它在 `submitMessage()` 里做了很多 LCAH 目前还拆得比较简单的事情：
 
 - 构建 system prompt parts 和 user context。
 - 处理 slash command、skills、plugins、MCP clients。
@@ -82,23 +82,23 @@ Claude Code 的 `QueryEngine.ts` 更像 Pico 的 `Runtime + Engine + CLI/TUI 交
 
 `query.ts` 则是更完整的模型循环。它在每轮请求前会处理 tool result budget、snip、microcompact、autocompact、system prompt、tool use context，然后再流式调用模型和工具。
 
-Pico 的设计更轻：一轮模型调用就是 `complete_model()`，没有 streaming block，也没有 SDK message 兼容层。它的好处是读起来直，测试容易写；不足是对长输出、部分流式结果、工具并发和 provider stall 的处理还不够细。
+LCAH 的设计更轻：一轮模型调用就是 `complete_model()`，没有 streaming block，也没有 SDK message 兼容层。它的好处是读起来直，测试容易写；不足是对长输出、部分流式结果、工具并发和 provider stall 的处理还不够细。
 
 ## 当前取舍
 
-Pico 的 runtime 拆法是合理的。`Runtime` 持有状态，`Engine` 推进循环，`model_output` 管协议解析，`tool_executor` 管动作边界，这四块各自只做一件事。
+LCAH 的 runtime 拆法是合理的。`Runtime` 持有状态，`Engine` 推进循环，`model_output` 管协议解析，`tool_executor` 管动作边界，这四块各自只做一件事。
 
 如果继续演进，优先级不是把 `Engine` 变复杂，可以先补三件事：
 
 - provider 层返回更细的 streaming / partial / watchdog 事件，让 Engine 不必猜空响应。
 - tool result budget 和大结果落盘策略更系统化，现在只有 `run_shell` 长输出会写 artifact。
-- transcript 级中途持久化更激进，Claude Code 已经把用户消息先写 transcript，Pico 现在主要依赖 session/run 写入。
+- transcript 级中途持久化更激进，Claude Code 已经把用户消息先写 transcript，LCAH 现在主要依赖 session/run 写入。
 
-面试里可以这样讲：Pico 的主循环已经是 turn 级状态机。它把 prompt 构建、模型协议、工具边界、checkpoint、memory maintenance 和 run artifacts 都纳入同一条控制流，所以能解释任务为什么继续、为什么停下、停下后留下了什么证据。
+面试里可以这样讲：LCAH 的主循环已经是 turn 级状态机。它把 prompt 构建、模型协议、工具边界、checkpoint、memory maintenance 和 run artifacts 都纳入同一条控制流，所以能解释任务为什么继续、为什么停下、停下后留下了什么证据。
 
 ## 设计文档级补充：turn loop 的可靠性边界
 
-Pico v3 的 runtime 设计重点，是把“模型输出一次文本”变成“一个可恢复、可审计、可停止的 turn”。这里的核心不是 while 循环，而是状态转移。
+LCAH v3 的 runtime 设计重点，是把“模型输出一次文本”变成“一个可恢复、可审计、可停止的 turn”。这里的核心不是 while 循环，而是状态转移。
 
 一个 turn 至少包含这些状态：
 
@@ -116,9 +116,9 @@ accepted user request
 
 如果这些状态没有显式化，agent 看起来能跑，但一旦出错就只能靠 terminal scrollback 猜。
 
-### 为什么 `Pico` 和 `Engine` 要分开
+### 为什么 `LCAH` 和 `Engine` 要分开
 
-`Pico` 拥有对象图。它知道 workspace、session、memory、tools、permissions、workers、provider、context manager、run store 在哪里。
+`LCAH` 拥有对象图。它知道 workspace、session、memory、tools、permissions、workers、provider、context manager、run store 在哪里。
 
 `Engine` 拥有推进逻辑。它知道一个用户请求应该如何变成一串模型调用和工具调用。
 
@@ -127,7 +127,7 @@ accepted user request
 - Runtime 变成“所有东西都能调用所有东西”的全局对象。
 - Engine 变成“自己 new 出所有依赖”的脚本。
 
-当前代码里 `Pico.ask()` 只是委派到 `Engine.ask()`，这是正确方向。真正要审查的是 `Engine.run_turn()` 是否保持 turn 状态机的单一入口。
+当前代码里 `LCAH.ask()` 只是委派到 `Engine.ask()`，这是正确方向。真正要审查的是 `Engine.run_turn()` 是否保持 turn 状态机的单一入口。
 
 ### stop reason 是比 status 更重要的字段
 
@@ -147,7 +147,7 @@ accepted user request
 
 ### retry budget 和 step budget 要分开
 
-Pico v3 区分 `attempts` 和 `tool_steps`。这是一个关键工程判断。
+LCAH v3 区分 `attempts` 和 `tool_steps`。这是一个关键工程判断。
 
 模型 malformed response 消耗的是 attempts；真实工具行动消耗的是 tool_steps。它们代表不同风险：
 
@@ -158,7 +158,7 @@ Pico v3 区分 `attempts` 和 `tool_steps`。这是一个关键工程判断。
 
 ### 文本协议的收益和代价
 
-Pico 当前用 `<tool>` / `<final>` 文本协议统一不同 provider。这带来两个收益：
+LCAH 当前用 `<tool>` / `<final>` 文本协议统一不同 provider。这带来两个收益：
 
 1. runtime 不依赖某个 provider 的原生 tool-use block。
 2. `ScriptedModelClient` 可以很容易构造固定输出，测试主循环。
@@ -181,7 +181,7 @@ Pico 当前用 `<tool>` / `<final>` 文本协议统一不同 provider。这带�
 - compact 可以在多个时机触发，而不是只有手动或粗粒度预算。
 - token budget、cost、cache、permission denial、tool progress 都进入同一个事件流。
 
-Pico 当前还偏 blocking：provider 返回完整文本后再解析。这个实现简单，但对长输出、慢模型、部分失败和 UI 实时反馈都不够强。
+LCAH 当前还偏 blocking：provider 返回完整文本后再解析。这个实现简单，但对长输出、慢模型、部分失败和 UI 实时反馈都不够强。
 
 ### 失败模式和防线
 

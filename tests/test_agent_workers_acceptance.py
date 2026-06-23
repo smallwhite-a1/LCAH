@@ -2,15 +2,15 @@ import json
 import threading
 import time
 
-from pico.testing import ScriptedModelClient
-from pico import Pico, SessionStore, WorkspaceContext
+from lcah.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
 
 
 def build_agent(tmp_path, outputs, **kwargs):
     (tmp_path / "README.md").write_text("demo readme\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    store = SessionStore(tmp_path / ".pico" / "sessions")
-    return Pico(
+    store = SessionStore(tmp_path / ".lcah" / "sessions")
+    return LCAH(
         model_client=ScriptedModelClient(outputs),
         workspace=workspace,
         session_store=store,
@@ -354,7 +354,7 @@ def test_plan_mode_allows_only_explore_agents(tmp_path):
             '<tool>{"name":"agent","args":{"description":"Explore plan","prompt":"Read README","subagent_type":"Explore"}}</tool>',
             '<tool>{"name":"read_file","args":{"path":"README.md","start":1,"end":1}}</tool>',
             "<final>Explored.</final>",
-            '<tool name="write_file" path=".pico/plans/gate7-plan.md"><content># Gate7\n</content></tool>',
+            '<tool name="write_file" path=".lcah/plans/gate7-plan.md"><content># Gate7\n</content></tool>',
             "<final>Plan ready.</final>",
         ],
         max_steps=5,
@@ -367,7 +367,7 @@ def test_plan_mode_allows_only_explore_agents(tmp_path):
             "description": "Write from plan",
             "prompt": "change files",
             "subagent_type": "worker",
-            "write_scope": ["pico"],
+            "write_scope": ["lcah"],
         },
     )
 

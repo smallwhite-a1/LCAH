@@ -1,24 +1,24 @@
 from pathlib import Path
 import pytest
 
-from pico.testing import ScriptedModelClient
-from pico import Pico, SessionStore, WorkspaceContext
+from lcah.testing import ScriptedModelClient
+from lcah import LCAH, SessionStore, WorkspaceContext
 
 
 def build_agent(tmp_path, outputs=None, **kwargs):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    return Pico(
+    return LCAH(
         model_client=ScriptedModelClient(outputs or []),
         workspace=workspace,
-        session_store=SessionStore(tmp_path / ".pico" / "sessions"),
+        session_store=SessionStore(tmp_path / ".lcah" / "sessions"),
         approval_policy="auto",
         **kwargs,
     )
 
 
 def test_usage_command_reports_provider_model_and_last_usage(tmp_path):
-    from pico.cli import handle_repl_command
+    from lcah.cli import handle_repl_command
 
     agent = build_agent(tmp_path, ["<final>Done.</final>"])
     agent.model_client.model = "gpt-test"
@@ -43,7 +43,7 @@ def test_usage_command_reports_provider_model_and_last_usage(tmp_path):
 
 
 def test_model_command_updates_current_runtime_only(tmp_path):
-    from pico.cli import handle_repl_command
+    from lcah.cli import handle_repl_command
 
     agent = build_agent(tmp_path, [])
     agent.model_client.model = "old-model"
@@ -53,17 +53,17 @@ def test_model_command_updates_current_runtime_only(tmp_path):
     assert handled is True
     assert output == "model: new-model"
     assert agent.model_client.model == "new-model"
-    assert not (Path(tmp_path) / ".pico.toml").exists()
+    assert not (Path(tmp_path) / ".lcah.toml").exists()
 
 
 def test_session_history_resume_and_clear_commands(tmp_path):
-    from pico.cli import handle_repl_command
+    from lcah.cli import handle_repl_command
 
     first = build_agent(tmp_path, ["<final>First.</final>"])
     assert first.ask("first request") == "First."
     first_id = first.session["id"]
 
-    second = Pico.from_session(
+    second = LCAH.from_session(
         model_client=ScriptedModelClient(["<final>Second.</final>"]),
         workspace=first.workspace,
         session_store=first.session_store,
@@ -94,7 +94,7 @@ def test_session_history_resume_and_clear_commands(tmp_path):
 
 
 def test_resume_rejects_path_traversal_session_id(tmp_path):
-    from pico.cli import handle_repl_command
+    from lcah.cli import handle_repl_command
 
     agent = build_agent(tmp_path, [])
 
@@ -105,7 +105,7 @@ def test_resume_rejects_path_traversal_session_id(tmp_path):
 
 
 def test_session_store_rejects_path_traversal_ids(tmp_path):
-    store = SessionStore(tmp_path / ".pico" / "sessions")
+    store = SessionStore(tmp_path / ".lcah" / "sessions")
 
     with pytest.raises(ValueError, match="invalid session id"):
         store.load("../outside")

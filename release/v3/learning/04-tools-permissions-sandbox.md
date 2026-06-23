@@ -4,7 +4,7 @@ Coding agent 的工具层不能只看工具数量。模型提出一个动作以�
 
 ![工具、权限和沙箱](assets/04-tools-permissions-sandbox.png)
 
-Pico 当前这一层由四个部分组成：
+LCAH 当前这一层由四个部分组成：
 
 - `tools/registry.py` 定义工具白名单和参数校验。
 - `core/permissions.py` 做运行模式和审批决策。
@@ -13,7 +13,7 @@ Pico 当前这一层由四个部分组成：
 
 ## 工具 registry 是能力白名单
 
-Pico 的工具走显式注册，不做动态发现。基础工具在 `BASE_TOOL_SPECS` 里定义，包括：
+LCAH 的工具走显式注册，不做动态发现。基础工具在 `BASE_TOOL_SPECS` 里定义，包括：
 
 - `list_files`
 - `read_file`
@@ -30,7 +30,7 @@ Pico 的工具走显式注册，不做动态发现。基础工具在 `BASE_TOOL_
 
 ## PermissionChecker 决定能不能做
 
-`PermissionChecker.check()` 先看当前 tool profile。Pico 有几种 profile：
+`PermissionChecker.check()` 先看当前 tool profile。LCAH 有几种 profile：
 
 - `default`：完整工具面。
 - `plan`：只读工具、计划 artifact 写入、Explore 子 agent、todo、ask_user。
@@ -73,7 +73,7 @@ Pico 的工具走显式注册，不做动态发现。基础工具在 `BASE_TOOL_
 
 ## tool_executor 让动作可审计
 
-工具执行前后，Pico 会对 risky 工具做工作区快照，执行后计算：
+工具执行前后，LCAH 会对 risky 工具做工作区快照，执行后计算：
 
 - `affected_paths`
 - `workspace_changed`
@@ -83,15 +83,15 @@ Pico 的工具走显式注册，不做动态发现。基础工具在 `BASE_TOOL_
 - `tool_error_code`
 - `security_event_type`
 
-长 shell 输出还会写进 run artifact，只在 prompt 里保留截断摘要。这一点和 Claude Code 的 tool result budget 思路类似，只是 Pico 现在只覆盖 `run_shell`。
+长 shell 输出还会写进 run artifact，只在 prompt 里保留截断摘要。这一点和 Claude Code 的 tool result budget 思路类似，只是 LCAH 现在只覆盖 `run_shell`。
 
 ## 和 Claude Code 的对标
 
 Claude Code 的 `Tool.ts` 把工具定义成更完整的协议：input schema、permission context、progress、UI 渲染、MCP、agent、task、worktree、notebook、LSP 等都在工具系统里。它的工具目录也更细，比如 BashTool 拆出了 command semantics、path validation、read-only validation、sandbox 判断和 destructive warning。
 
-Pico 现在的工具层更小，但主线是对的：
+LCAH 现在的工具层更小，但主线是对的：
 
-| 维度 | Pico | Claude Code |
+| 维度 | LCAH | Claude Code |
 | --- | --- | --- |
 | 工具注册 | Python dict 显式白名单 | 独立工具模块和工具 registry |
 | 权限 | profile + approval + write scope | permission context + hooks + mode handlers |
@@ -101,7 +101,7 @@ Pico 现在的工具层更小，但主线是对的：
 
 ## 当前取舍
 
-Pico 的工具系统适合当前体量。它没有 MCP 和几十个工具，但有统一执行边界，这比盲目堆工具更重要。
+LCAH 的工具系统适合当前体量。它没有 MCP 和几十个工具，但有统一执行边界，这比盲目堆工具更重要。
 
 后续优先补的是 tool-level policy，而不是工具数量。可以从四件事开始：编辑前 read 规则覆盖更多编辑路径，shell 安全规则按命令语义分类，工具结果统一预算和落盘，worker/plan/dream profile 的边界写成显式测试矩阵。
 
@@ -109,7 +109,7 @@ Pico 的工具系统适合当前体量。它没有 MCP 和几十个工具，但�
 
 工具系统是 coding agent 最容易低估的一层。一个工具看起来只是 Python 函数，但对模型来说，它是接触外部世界的唯一通道。只要工具能读写文件、跑 shell、发网络请求，它就必须被当成协议设计。
 
-Pico v3 的工具协议至少包含七件事：
+LCAH v3 的工具协议至少包含七件事：
 
 ```text
 tool name
@@ -125,7 +125,7 @@ result normalization and evidence
 
 ### registry 的职责边界
 
-`pico/tools/registry.py` 定义工具能力。它应该回答：
+`lcah/tools/registry.py` 定义工具能力。它应该回答：
 
 - 这个工具叫什么。
 - 接受哪些参数。
@@ -166,11 +166,11 @@ policy: 这个工具用法是否合理
 sandbox: 即使允许执行，进程最多能碰到哪里
 ```
 
-Pico 当前 sandbox 只覆盖 `run_shell`，支持 `off/best_effort/required`。在 macOS 上 bubblewrap 不可用，所以它不能作为唯一安全手段。文档和测试里必须把这个边界讲清楚：sandbox 是 defense-in-depth，不是 approval 的替代品。
+LCAH 当前 sandbox 只覆盖 `run_shell`，支持 `off/best_effort/required`。在 macOS 上 bubblewrap 不可用，所以它不能作为唯一安全手段。文档和测试里必须把这个边界讲清楚：sandbox 是 defense-in-depth，不是 approval 的替代品。
 
 ### 工具结果也是协议
 
-工具返回值不能只是字符串。Pico 需要知道：
+工具返回值不能只是字符串。LCAH 需要知道：
 
 - 是否成功。
 - 错误码是什么。
@@ -196,7 +196,7 @@ Pico 当前 sandbox 只覆盖 `run_shell`，支持 `off/best_effort/required`。
 - MCP/deferred loading。
 - read/search/write 分类。
 
-Pico 当前只做了小集合，但应该保留协议意识。未来增加 MCP、web、notebook、LSP 之前，先把当前工具的协议边界打稳。
+LCAH 当前只做了小集合，但应该保留协议意识。未来增加 MCP、web、notebook、LSP 之前，先把当前工具的协议边界打稳。
 
 ### 失败模式和防线
 

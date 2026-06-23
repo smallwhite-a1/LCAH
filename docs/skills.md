@@ -1,6 +1,6 @@
 # Skills
 
-Skill 是一段写在 markdown 文件里的可复用 prompt，可以通过 `/skill-name [args]` 调用。pico 把它展开成一次普通 session 请求，沿用同一套工具、审批和事件链路。
+Skill 是一段写在 markdown 文件里的可复用 prompt，可以通过 `/skill-name [args]` 调用。lcah 把它展开成一次普通 session 请求，沿用同一套工具、审批和事件链路。
 
 ## 内置 skill
 
@@ -10,7 +10,7 @@ Skill 是一段写在 markdown 文件里的可复用 prompt，可以通过 `/ski
 - `/simplify` — 找代码冗余并修
 
 ```bash
-pico
+lcah
 > /review
 ↳ Bash(git diff) ✓
 代码审查：3 处可简化，1 处有遗漏的错误处理...
@@ -20,13 +20,13 @@ pico
 
 后加载的同名 skill 覆盖前面的：
 
-1. **内置 skill** — pico 自带
-2. **用户 skill** — `~/.pico/skills/<name>/SKILL.md`
-3. **项目 skill** — `<repo>/skills/<name>/SKILL.md` 或 `<repo>/.pico/skills/<name>/SKILL.md`
+1. **内置 skill** — lcah 自带
+2. **用户 skill** — `~/.lcah/skills/<name>/SKILL.md`
+3. **项目 skill** — `<repo>/skills/<name>/SKILL.md` 或 `<repo>/.lcah/skills/<name>/SKILL.md`
 
 ## 自定义一个 skill
 
-最小例子，新建 `~/.pico/skills/deploy/SKILL.md`：
+最小例子，新建 `~/.lcah/skills/deploy/SKILL.md`：
 
 ```markdown
 ---
@@ -49,7 +49,7 @@ allowed-tools: read_file, search
 > /deploy staging
 ```
 
-`$ARGUMENTS` 会被替换为 `staging`。`${PICO_SKILL_DIR}` 会被替换为 skill 文件所在目录的绝对路径。
+`$ARGUMENTS` 会被替换为 `staging`。`${LCAH_SKILL_DIR}` 会被替换为 skill 文件所在目录的绝对路径。
 
 ## Frontmatter
 
@@ -91,23 +91,23 @@ paths: src/**/*.py, !src/legacy/**
 ## 调试
 
 - `/skills` 列出所有可用 skill 和加载来源
-- `/auto-skills` 列出 `.pico/skills/` 下由 auto-skills 工具维护的项目 skill
+- `/auto-skills` 列出 `.lcah/skills/` 下由 auto-skills 工具维护的项目 skill
 - skill 执行时，事件流里会有 `skill_invoked` / `skill_finished`
-- 用 `disable-model-invocation: true` 配合 `pico --tui` 可以在不发请求的情况下预览 skill 展开后的 prompt
+- 用 `disable-model-invocation: true` 配合 `lcah --tui` 可以在不发请求的情况下预览 skill 展开后的 prompt
 
 ## Auto-Skills
 
-pico 也支持一个轻量的 auto-skills 生命周期，参考 MUSE-Autoskill 的
+lcah 也支持一个轻量的 auto-skills 生命周期，参考 MUSE-Autoskill 的
 creation、memory、management、evaluation、refinement 思路：
 
-- `skill_create`：创建 `.pico/skills/<name>/SKILL.md`，可同时写入 `tests/test_skill.py`
+- `skill_create`：创建 `.lcah/skills/<name>/SKILL.md`，可同时写入 `tests/test_skill.py`
 - `skill_eval`：运行该 skill 的 `tests/`，并把结果写入 `.memory.md`
 - `find_skill`：按 query 检索 skill catalog 和 skill-level memory
 - `read_skill`：按需读取完整 `SKILL.md` 和 `.memory.md`
 - `update_skill`：根据反馈更新 skill 文档或测试
 - `skill_note`：追加每个 skill 自己的经验记忆
 
-创建成功后，pico 会刷新 skill catalog，后续可直接通过 `/skill-name` 调用。
+创建成功后，lcah 会刷新 skill catalog，后续可直接通过 `/skill-name` 调用。
 `.memory.md` 不进入 skill 本体迁移包，表示本 agent 在本仓库里积累的使用经验。
 
 ### 示例验证
