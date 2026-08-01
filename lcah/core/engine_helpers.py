@@ -67,7 +67,12 @@ def execute_tool_payload(engine, task_state, user_message, payload):
     agent.emit_trace(
         task_state,
         "checkpoint_created",
-        {"checkpoint_id": checkpoint["checkpoint_id"], "trigger": "tool_executed"},
+        {
+            "checkpoint_id": checkpoint["checkpoint_id"],
+            "trigger": "tool_executed",
+            "quality_status": checkpoint["quality_status"],
+            "quality_verification": checkpoint["quality_verification"]["status"],
+        },
     )
     yield {
         "type": "tool_result",
@@ -94,7 +99,12 @@ def finish_stopped_run(
     agent.emit_trace(
         task_state,
         "checkpoint_created",
-        {"checkpoint_id": checkpoint["checkpoint_id"], "trigger": stop_reason},
+        {
+            "checkpoint_id": checkpoint["checkpoint_id"],
+            "trigger": stop_reason,
+            "quality_status": checkpoint["quality_status"],
+            "quality_verification": checkpoint["quality_verification"]["status"],
+        },
     )
     agent.emit_trace(
         task_state,
@@ -148,6 +158,8 @@ def finish_limited_run(engine, task_state, user_message, final, run_started_at):
         {
             "checkpoint_id": checkpoint["checkpoint_id"],
             "trigger": task_state.stop_reason or "run_stopped",
+            "quality_status": checkpoint["quality_status"],
+            "quality_verification": checkpoint["quality_verification"]["status"],
         },
     )
     agent.emit_trace(

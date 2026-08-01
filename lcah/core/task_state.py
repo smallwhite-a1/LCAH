@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import uuid4
 
+from .quality import QUALITY_IN_PROGRESS
+
 STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
 STATUS_STOPPED = "stopped"
@@ -41,6 +43,8 @@ class TaskState:
     verifier_suggestions: list = field(default_factory=list)
     runtime_reminders: list = field(default_factory=list)
     todo_changes: list = field(default_factory=list)
+    quality_status: str = QUALITY_IN_PROGRESS
+    quality_verification: dict = field(default_factory=dict)
 
     @classmethod
     def create(cls, task_id, user_request, run_id=""):
@@ -67,6 +71,8 @@ class TaskState:
             verifier_suggestions=list(data.get("verifier_suggestions", [])),
             runtime_reminders=list(data.get("runtime_reminders", [])),
             todo_changes=list(data.get("todo_changes", [])),
+            quality_status=str(data.get("quality_status", QUALITY_IN_PROGRESS)),
+            quality_verification=dict(data.get("quality_verification", {}) or {}),
         )
 
     def record_attempt(self):
@@ -78,6 +84,11 @@ class TaskState:
         # tool_steps 只统计真正进入执行阶段的工具调用次数。
         self.tool_steps += 1
         self.last_tool = str(name or "")
+        return self
+
+    def record_quality(self, status, verification):
+        self.quality_status = str(status or QUALITY_IN_PROGRESS)
+        self.quality_verification = dict(verification or {})
         return self
 
     def stop(self, stop_reason, status=STATUS_STOPPED, final_answer=""):
@@ -121,4 +132,6 @@ class TaskState:
             "verifier_suggestions": list(self.verifier_suggestions),
             "runtime_reminders": list(self.runtime_reminders),
             "todo_changes": list(self.todo_changes),
+            "quality_status": self.quality_status,
+            "quality_verification": dict(self.quality_verification),
         }

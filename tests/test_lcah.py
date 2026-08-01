@@ -1108,6 +1108,28 @@ def test_agent_creates_checkpoint_when_context_reduction_happens_and_artifacts_o
     assert "current_goal" not in checkpoint_events[-1]
 
 
+def test_completed_checkpoint_records_quality_status_evidence_and_verification(tmp_path):
+    agent = build_agent(
+        tmp_path,
+        [
+            '<tool>{"name":"write_file","args":{"path":"notes.txt","content":"hello\\n"}}</tool>',
+            "<final>Done.</final>",
+        ],
+    )
+
+    assert agent.ask("Create notes.txt") == "Done."
+
+    checkpoint = agent.current_checkpoint()
+    assert checkpoint["quality_status"] == "completed"
+    assert checkpoint["evidence"]["changed_paths"] == ["notes.txt"]
+    assert checkpoint["evidence"]["tool_steps"] == 1
+    assert checkpoint["quality_verification"]["passed"] is True
+
+    task_state = json.loads((agent.current_run_dir / "task_state.json").read_text(encoding="utf-8"))
+    assert task_state["quality_status"] == "completed"
+    assert task_state["quality_verification"]["passed"] is True
+
+
 def test_resume_prompt_uses_checkpoint_state_not_just_history(tmp_path):
     agent = build_agent(tmp_path, ["<final>checkpoint ready.</final>"])
     agent.session["checkpoints"] = {

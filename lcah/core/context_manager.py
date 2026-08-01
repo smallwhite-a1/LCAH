@@ -10,11 +10,13 @@ from dataclasses import dataclass
 
 from ..features import memory as memorylib, skills as skillslib
 from .context_usage import ContextUsageAnalyzer
+from .quality import verify_prompt_continuity
 from .turn_history import TurnHistoryBuilder, tail_clip
 
 DEFAULT_TOTAL_BUDGET = 60000
 DEFAULT_SECTION_BUDGETS = {
     "prefix": 12000,
+    "checkpoint": 6000,
     "memory": 8000,
     "skills": 4000,
     "relevant_memory": 6000,
@@ -22,6 +24,7 @@ DEFAULT_SECTION_BUDGETS = {
 }
 DEFAULT_SECTION_FLOORS = {
     "prefix": 4000,
+    "checkpoint": 1000,
     "memory": 1200,
     "skills": 600,
     "relevant_memory": 1000,
@@ -29,7 +32,8 @@ DEFAULT_SECTION_FLOORS = {
 }
 # 当 prompt 超预算时，会优先压缩这些 section。
 DEFAULT_REDUCTION_ORDER = ("relevant_memory", "skills", "history", "memory", "prefix")
-SECTION_ORDER = ("prefix", "memory", "skills", "relevant_memory", "history", "current_request")
+SECTION_ORDER = ("prefix", "checkpoint", "memory", "skills", "relevant_memory", "history", "current_request")
+CHECKPOINT_SECTION = "checkpoint"
 CURRENT_REQUEST_SECTION = "current_request"
 RELEVANT_MEMORY_LIMIT = 3
 
@@ -102,6 +106,7 @@ class ContextManager:
         memory_text = "Memory:\n- disabled" if not memory_enabled else str(self.agent.memory_text())
         section_texts = {
             "prefix": str(getattr(self.agent, "prefix", "")),
+            CHECKPOINT_SECTION: "",
             "memory": memory_text,
             "skills": skillslib.render_prompt_section(getattr(self.agent, "skills", {})),
             "history": "",
@@ -112,8 +117,7 @@ class ContextManager:
         checkpoint_text = ""
         if hasattr(self.agent, "render_checkpoint_text"):
             checkpoint_text = str(self.agent.render_checkpoint_text() or "").strip()
-        if checkpoint_text:
-            section_texts["memory"] += "\n\n" + checkpoint_text
+        section_texts[CHECKPOINT_SECTION] = checkpoint_text
         if memory_enabled and hasattr(self.agent, "memory_dir"):
             section_texts["memory"] += "\n\n" + memorylib.build_memory_system_section(self.agent.memory_dir)
         selected_notes = []
@@ -193,6 +197,12 @@ class ContextManager:
         history_raw = self.history_builder.raw_text(history)
         return {
             "prefix": SectionRender(raw=section_texts["prefix"], budget=len(section_texts["prefix"]), rendered=section_texts["prefix"], details={}),
+            CHECKPOINT_SECTION: SectionRender(
+                raw=section_texts[CHECKPOINT_SECTION],
+                budget=self.section_budgets.get(CHECKPOINT_SECTION, len(section_texts[CHECKPOINT_SECTION])),
+                rendered=section_texts[CHECKPOINT_SECTION],
+                details={},
+            ),
             "memory": SectionRender(raw=section_texts["memory"], budget=len(section_texts["memory"]), rendered=section_texts["memory"], details={}),
             "skills": SectionRender(raw=section_texts["skills"], budget=len(section_texts["skills"]), rendered=section_texts["skills"], details={}),
             "relevant_memory": SectionRender(
@@ -231,6 +241,14 @@ class ContextManager:
             if section == CURRENT_REQUEST_SECTION:
                 raw = section_texts[section]
                 rendered[section] = SectionRender(raw=raw, budget=0, rendered=raw, details={})
+            elif section == CHECKPOINT_SECTION:
+                raw = section_texts[section]
+                rendered[section] = SectionRender(
+                    raw=raw,
+                    budget=int(budget or len(raw)),
+                    rendered=raw,
+                    details={},
+                )
             elif section == "relevant_memory":
                 rendered[section] = self._render_relevant_memory(selected_notes or [], int(budget or 0))
             elif section == "history":
@@ -325,7 +343,7 @@ class ContextManager:
 
     def _assemble_prompt(self, rendered):
         # 顺序是刻意设计的：稳定规则放前面，最新请求放最后。
-        return "\n\n".join(rendered[section].rendered for section in SECTION_ORDER).strip()
+        return "\n\n".join(rendered[section].rendered for section in SECTION_ORDER if rendered[section].rendered).strip()
 
     def _metadata(self, prompt, rendered, budgets, reduction_log, selected_notes, user_message, section_texts):
         section_metadata = {}
@@ -340,7 +358,7 @@ class ContextManager:
             "budget_chars": None,
             "rendered_chars": len(rendered[CURRENT_REQUEST_SECTION].rendered),
         }
-        return {
+        payload = {
             "prompt_chars": len(prompt),
             "prompt_budget_chars": self.total_budget,
             "prompt_over_budget": len(prompt) > self.total_budget,
@@ -384,6 +402,12 @@ class ContextManager:
             },
             "context_usage": ContextUsageAnalyzer(self.agent).analyze(rendered),
         }
+        payload["quality_verification"] = verify_prompt_continuity(
+            prompt,
+            user_message,
+            section_texts.get(CHECKPOINT_SECTION, ""),
+        )
+        return payload
 
     def _skills_metadata(self):
         skills = getattr(self.agent, "skills", {})
