@@ -143,6 +143,8 @@ class Engine:
                     {
                         "checkpoint_id": checkpoint["checkpoint_id"],
                         "trigger": "freshness_mismatch",
+                        "quality_status": checkpoint["quality_status"],
+                        "quality_verification": checkpoint["quality_verification"]["status"],
                     },
                 )
             elif (
@@ -168,6 +170,8 @@ class Engine:
                     {
                         "checkpoint_id": checkpoint["checkpoint_id"],
                         "trigger": "workspace_mismatch",
+                        "quality_status": checkpoint["quality_status"],
+                        "quality_verification": checkpoint["quality_verification"]["status"],
                     },
                 )
             if prompt_metadata.get("budget_reductions"):
@@ -181,6 +185,8 @@ class Engine:
                     {
                         "checkpoint_id": checkpoint["checkpoint_id"],
                         "trigger": "context_reduction",
+                        "quality_status": checkpoint["quality_status"],
+                        "quality_verification": checkpoint["quality_verification"]["status"],
                     },
                 )
             agent.emit_trace(
@@ -395,6 +401,8 @@ class Engine:
                 {
                     "checkpoint_id": checkpoint["checkpoint_id"],
                     "trigger": "run_finished",
+                    "quality_status": checkpoint["quality_status"],
+                    "quality_verification": checkpoint["quality_verification"]["status"],
                 },
             )
             agent.emit_trace(

@@ -4,6 +4,7 @@ import hashlib
 import uuid
 
 from ..features import memory as memorylib
+from .quality import classify_progress, verify_checkpoint
 from .workspace import IGNORED_PATH_NAMES, clip, now
 
 CHECKPOINT_SCHEMA_VERSION = "phase1-v1"
@@ -51,6 +52,13 @@ class RuntimeCheckpointsMixin:
             file_freshness = memorylib.file_freshness(path, self.root)
             freshness[path] = file_freshness
             key_files.append({"path": path, "freshness": file_freshness})
+        evidence = {
+            "changed_paths": list(task_state.changed_paths),
+            "last_tool": str(task_state.last_tool or ""),
+            "tool_steps": int(task_state.tool_steps),
+            "attempts": int(task_state.attempts),
+        }
+        quality_status = classify_progress(task_state, current, trigger=trigger)
         checkpoint = {
             "checkpoint_id": checkpoint_id,
             "parent_checkpoint_id": current.get("checkpoint_id", "") if current else "",
@@ -65,7 +73,11 @@ class RuntimeCheckpointsMixin:
             "freshness": freshness,
             "summary": f"{trigger}: {clip(str(user_message), 120)}",
             "runtime_identity": self.current_runtime_identity(),
+            "quality_status": quality_status,
+            "evidence": evidence,
         }
+        checkpoint["quality_verification"] = verify_checkpoint(checkpoint)
+        task_state.record_quality(quality_status, checkpoint["quality_verification"])
         state["items"][checkpoint_id] = checkpoint
         state["current_id"] = checkpoint_id
         task_state.checkpoint_id = checkpoint_id

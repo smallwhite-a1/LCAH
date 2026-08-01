@@ -1,6 +1,7 @@
 """Session compaction boundary."""
 
 from .context_usage import estimate_tokens
+from .quality import verify_compaction_continuity
 from .workspace import now
 
 
@@ -13,6 +14,10 @@ class CompactManager:
         groups = self._group(history)
         if len(groups) <= keep_recent_turns:
             summary = self._summary(trigger, history, history, "")
+            summary["applied"] = False
+            summary["quality_verification"] = verify_compaction_continuity(
+                history, history, "", keep_recent_turns=keep_recent_turns
+            )
             self.agent.session_event_bus.emit("compaction_created", summary)
             return summary
 
@@ -30,8 +35,20 @@ class CompactManager:
                 "source": "compact",
             }
         )
-        self.agent.session["history"] = [summary_item, *kept_items]
-        summary = self._summary(trigger, history, self.agent.session["history"], summary_text)
+        compacted_history = [summary_item, *kept_items]
+        quality_verification = verify_compaction_continuity(
+            history,
+            compacted_history,
+            summary_text,
+            keep_recent_turns=keep_recent_turns,
+        )
+        summary = self._summary(trigger, history, compacted_history, summary_text)
+        summary["applied"] = quality_verification["passed"]
+        summary["quality_verification"] = quality_verification
+        if not quality_verification["passed"]:
+            self.agent.session_event_bus.emit("compaction_quality_failed", summary)
+            return summary
+        self.agent.session["history"] = compacted_history
         self.agent.session.setdefault("compactions", []).append(summary)
         self.agent.session_path = self.agent.session_store.save(self.agent.session)
         self.agent.session_event_bus.emit("compaction_created", summary)

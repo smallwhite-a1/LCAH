@@ -100,3 +100,4 @@ def test_prompt_over_budget_triggers_auto_compaction_during_real_turn(tmp_path):
 
     assert agent.last_prompt_metadata["auto_compacted"] is True
     assert any(item["trigger"] == "auto_prompt_over_budget" for item in agent.session["compactions"])
+    assert agent.session["compactions"][-1]["quality_verification"]["passed"] is True

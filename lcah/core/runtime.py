@@ -366,6 +366,7 @@ class LCAH(RuntimeSecretsMixin, RuntimeCheckpointsMixin):
         lines = [
             "Task checkpoint:",
             f"- Resume status: {self.resume_state.get('status', CHECKPOINT_NONE_STATUS)}",
+            f"- Quality status: {checkpoint.get('quality_status', 'in_progress')}",
             f"- Current goal: {checkpoint.get('current_goal', '-') or '-'}",
             f"- Current blocker: {checkpoint.get('current_blocker', '-') or '-'}",
             f"- Next step: {checkpoint.get('next_step', '-') or '-'}",
@@ -385,6 +386,13 @@ class LCAH(RuntimeSecretsMixin, RuntimeCheckpointsMixin):
             lines.append(
                 "- Excluded: "
                 + " | ".join(str(item) for item in checkpoint.get("excluded", []))
+            )
+        evidence = checkpoint.get("evidence", {}) or {}
+        if evidence:
+            lines.append(
+                "- Evidence: "
+                f"tool_steps={evidence.get('tool_steps', 0)}, "
+                f"changed_paths={', '.join(evidence.get('changed_paths', []) or []) or '-'}"
             )
         if self.resume_state.get("stale_paths"):
             lines.append(
@@ -606,9 +614,10 @@ class LCAH(RuntimeSecretsMixin, RuntimeCheckpointsMixin):
             metadata.get("prompt_over_budget")
             and len(self.session.get("history", [])) > 4
         ):
-            self.compact_history(trigger="auto_prompt_over_budget")
+            compaction = self.compact_history(trigger="auto_prompt_over_budget")
             prompt, metadata = self.context_manager.build(user_message)
-            metadata["auto_compacted"] = True
+            metadata["auto_compacted"] = bool(compaction.get("applied", False))
+            metadata["compaction"] = compaction
         # 这里把“这轮 prompt 是怎么拼出来的”连同缓存相关状态一起记下来，
         # 后面 trace/report 才能解释清楚：为什么这一轮 prefix 变了、缓存有没有命中。
         metadata.update(

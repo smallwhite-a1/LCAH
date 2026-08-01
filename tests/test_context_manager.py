@@ -35,7 +35,45 @@ def test_context_manager_assembles_sections_in_expected_order(tmp_path):
     assert prompt.index("Relevant memory:") < prompt.index("Transcript:")
     assert prompt.index("Transcript:") < prompt.index("Current user request:")
     assert prompt.rstrip().endswith("Current user request:\nWhere is the deploy key?")
-    assert metadata["section_order"] == ["prefix", "memory", "skills", "relevant_memory", "history", "current_request"]
+    assert metadata["section_order"] == ["prefix", "checkpoint", "memory", "skills", "relevant_memory", "history", "current_request"]
+
+
+def test_context_manager_keeps_checkpoint_outside_ordinary_memory_reduction(tmp_path):
+    agent = build_agent(tmp_path, [])
+    agent.session["checkpoints"] = {
+        "current_id": "ckpt_quality",
+        "items": {
+            "ckpt_quality": {
+                "checkpoint_id": "ckpt_quality",
+                "current_goal": "Preserve this goal after compression",
+                "current_blocker": "",
+                "next_step": "Run the quality verifier",
+                "key_files": [{"path": "README.md", "freshness": "fresh"}],
+                "completed": [],
+                "excluded": [],
+                "evidence": {"tool_steps": 2, "changed_paths": ["README.md"]},
+                "quality_status": "in_progress",
+                "summary": "context reduction checkpoint",
+            }
+        },
+    }
+    agent.memory.render_memory_text = lambda: "MEMORY " + ("x" * 800)
+
+    prompt, metadata = ContextManager(
+        agent,
+        total_budget=240,
+        section_budgets={
+            "prefix": 40,
+            "memory": 80,
+            "skills": 40,
+            "relevant_memory": 40,
+            "history": 40,
+        },
+    ).build("Continue the task")
+
+    assert "Current goal: Preserve this goal after compression" in prompt
+    assert "Next step: Run the quality verifier" in prompt
+    assert metadata["sections"]["checkpoint"]["rendered_chars"] > 0
 
 
 def test_context_manager_reduces_relevant_memory_before_history_and_preserves_newer_context(tmp_path):
