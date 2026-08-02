@@ -56,6 +56,94 @@ def test_failed_compaction_keeps_original_history_intact(tmp_path):
     assert agent.session.get("compactions", []) == []
 
 
+def test_compaction_repairs_summary_once_before_applying(tmp_path):
+    agent = build_agent(tmp_path)
+    add_history(agent)
+    original_summary_text = agent.compact_manager._summary_text
+    calls = {"count": 0}
+
+    def summary_with_one_repair(items):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return "invalid summary"
+        return original_summary_text(items)
+
+    agent.compact_manager._summary_text = summary_with_one_repair
+
+    result = agent.compact_history(trigger="acceptance_repair", keep_recent_turns=2)
+
+    assert result["applied"] is True
+    assert result["quality_repair_attempts"] == 1
+    assert calls["count"] == 2
+    assert agent.session.get("compactions")
+
+
+def test_compaction_repair_appends_missing_critical_evidence(tmp_path):
+    agent = build_agent(tmp_path)
+    agent.record(
+        {
+            "role": "tool",
+            "name": "run_shell",
+            "args": {"command": "pytest -q tests/test_quality.py"},
+            "content": "2 passed",
+            "turn_id": "old-command",
+            "created_at": "2026-08-01T10:00:00+00:00",
+        }
+    )
+    add_history(agent, count=6)
+    original_summary_text = agent.compact_manager._summary_text
+
+    def summary_without_critical_evidence(items):
+        return original_summary_text(items).replace("pytest -q tests/test_quality.py", "pytest")
+
+    agent.compact_manager._summary_text = summary_without_critical_evidence
+
+    result = agent.compact_history(trigger="acceptance_evidence_repair", keep_recent_turns=2)
+
+    assert result["applied"] is True
+    assert result["quality_repair_attempts"] == 1
+    assert "pytest -q tests/test_quality.py" in agent.session["history"][0]["content"]
+
+
+def test_compaction_summary_retains_commands_and_test_outcomes(tmp_path):
+    agent = build_agent(tmp_path)
+    summary = agent.compact_manager._summary_text(
+        [
+            {
+                "role": "user",
+                "content": "Fix the parser and verify it with pytest.",
+                "turn_id": "turn-1",
+            },
+            {
+                "role": "tool",
+                "name": "read_file",
+                "args": {"path": "lcah/core/compact.py"},
+                "content": "source",
+                "turn_id": "turn-1",
+            },
+            {
+                "role": "tool",
+                "name": "run_shell",
+                "args": {"command": "pytest -q tests/test_context_quality_acceptance.py"},
+                "content": "1 passed",
+                "turn_id": "turn-1",
+            },
+            {
+                "role": "assistant",
+                "content": "Decision: preserve the verifier before editing behavior.",
+                "turn_id": "turn-1",
+            },
+        ]
+    )
+
+    assert "- Acceptance checks:" in summary
+    assert "- Tests and outcomes:" in summary
+    assert "pytest -q tests/test_context_quality_acceptance.py" in summary
+    assert "1 passed" in summary
+    assert "lcah/core/compact.py" in summary
+    assert "- Evidence:" in summary
+
+
 def test_quality_evidence_is_written_to_report_and_prompt_metadata(tmp_path):
     agent = build_agent(tmp_path, ["<final>Done.</final>"])
 

@@ -1,5 +1,7 @@
 """Deterministic quality checks for resumable tasks and compacted context."""
 
+import re
+
 QUALITY_PASSED = "passed"
 QUALITY_REPAIR_REQUIRED = "repair_required"
 
@@ -19,13 +21,19 @@ CHECKPOINT_REQUIRED_FIELDS = (
 
 SUMMARY_CONTRACT = (
     "- Goal:",
+    "- Prior user requests:",
     "- Constraints and preferences:",
+    "- Acceptance checks:",
     "- Files read:",
     "- Files modified:",
     "- Key decisions:",
+    "- Tests and outcomes:",
+    "- Errors and blockers:",
+    "- Dependencies and commands:",
     "- Current progress:",
     "- Open blockers:",
     "- Next step:",
+    "- Evidence:",
     "- Critical context:",
 )
 
@@ -79,6 +87,32 @@ def _flatten(groups):
     return [item for group in groups for item in group]
 
 
+def critical_context_signals(items):
+    """Extract bounded, inspectable facts that a compacted summary must retain."""
+
+    signals = []
+    outcome_pattern = re.compile(
+        r"\b(?:pytest|test[_\w.-]*|passed?|failed?|failure|error|exception|traceback)\b",
+        re.IGNORECASE,
+    )
+
+    def add(value):
+        value = " ".join(str(value or "").split()).strip()
+        if value and value not in signals:
+            signals.append(value)
+
+    for item in items:
+        args = item.get("args") or {}
+        add(args.get("path"))
+        add(args.get("command"))
+        content = " ".join(str(item.get("content", "")).split()).strip()
+        if content and outcome_pattern.search(content):
+            for fragment in re.split(r"\s*[;\n]\s*", content):
+                if outcome_pattern.search(fragment):
+                    add(fragment)
+    return signals
+
+
 def verify_compaction_continuity(before, after, summary_text, keep_recent_turns=2):
     """Verify that compaction only summarizes old turns and preserves recent ones."""
 
@@ -89,14 +123,23 @@ def verify_compaction_continuity(before, after, summary_text, keep_recent_turns=
     compacted = len(groups) > keep_recent_turns
     kept_items = _flatten(groups[-keep_recent_turns:]) if keep_recent_turns else []
     actual_suffix = after[-len(kept_items):] if kept_items else []
+    critical_signals = critical_context_signals(
+        _flatten(groups[:-keep_recent_turns]) if compacted else []
+    )
+    summary_lower = str(summary_text or "").lower()
+    missing_critical_signals = [signal for signal in critical_signals if signal.lower() not in summary_lower]
     checks = {
         "recent_turns_preserved": actual_suffix == kept_items,
         "summary_contract": not compacted or all(marker in str(summary_text or "") for marker in SUMMARY_CONTRACT),
         "history_is_compact": len(after) < len(before)
         if compacted
         else True,
+        "critical_context_preserved": not compacted or not missing_critical_signals,
     }
-    return _verification(checks)
+    result = _verification(checks)
+    result["critical_signals"] = critical_signals
+    result["missing_critical_signals"] = missing_critical_signals
+    return result
 
 
 def verify_prompt_continuity(prompt, current_request, checkpoint_text=""):

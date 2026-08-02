@@ -1,6 +1,6 @@
-from lcah.testing import ScriptedModelClient
 from lcah import LCAH, SessionStore, WorkspaceContext
 from lcah.core.context_manager import ContextManager
+from lcah.testing import ScriptedModelClient
 
 
 def build_workspace(tmp_path):
@@ -74,6 +74,27 @@ def test_context_manager_keeps_checkpoint_outside_ordinary_memory_reduction(tmp_
     assert "Current goal: Preserve this goal after compression" in prompt
     assert "Next step: Run the quality verifier" in prompt
     assert metadata["sections"]["checkpoint"]["rendered_chars"] > 0
+
+
+def test_context_manager_applies_checkpoint_section_budget(tmp_path):
+    agent = build_agent(tmp_path, [])
+    agent.render_checkpoint_text = lambda: "CHECKPOINT " + ("x" * 500)
+
+    _, metadata = ContextManager(
+        agent,
+        total_budget=1200,
+        section_budgets={
+            "prefix": 120,
+            "checkpoint": 80,
+            "memory": 80,
+            "skills": 80,
+            "relevant_memory": 80,
+            "history": 80,
+        },
+    ).build("Continue the task")
+
+    assert metadata["sections"]["checkpoint"]["rendered_chars"] <= 80
+    assert metadata["sections"]["checkpoint"]["truncated"] is True
 
 
 def test_context_manager_reduces_relevant_memory_before_history_and_preserves_newer_context(tmp_path):

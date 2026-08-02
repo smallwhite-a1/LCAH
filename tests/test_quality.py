@@ -52,20 +52,22 @@ def test_compaction_verifier_preserves_recent_turns_and_summary_contract():
         history_item("user", "latest request", "turn-2"),
         history_item("assistant", "latest answer", "turn-2"),
     ]
-    summary = "\n".join(
-        [
-            "Compacted session summary:",
-            "- Goal: old goal",
-            "- Constraints and preferences: -",
-            "- Files read: README.md",
-            "- Files modified: -",
-            "- Key decisions: old decision",
-            "- Current progress: compacted 2 history items",
-            "- Open blockers: -",
-            "- Next step: continue",
-            "- Critical context: preserve latest turns",
-        ]
-    )
+    summary = """Compacted session summary:
+- Goal: old goal
+- Prior user requests: old goal
+- Constraints and preferences: -
+- Acceptance checks: -
+- Files read: README.md
+- Files modified: -
+- Key decisions: old decision
+- Tests and outcomes: -
+- Errors and blockers: -
+- Dependencies and commands: -
+- Current progress: compacted 2 history items
+- Open blockers: -
+- Next step: continue
+- Evidence: -
+- Critical context: preserve latest turns"""
 
     result = verify_compaction_continuity(
         old,
@@ -77,6 +79,65 @@ def test_compaction_verifier_preserves_recent_turns_and_summary_contract():
     assert result["status"] == QUALITY_PASSED
     assert result["checks"]["recent_turns_preserved"] is True
     assert result["checks"]["summary_contract"] is True
+
+
+def test_compaction_verifier_requires_critical_files_commands_and_outcomes():
+    old = [
+        history_item("user", "Implement the fix and run the test suite.", "turn-1"),
+        {
+            "role": "tool",
+            "name": "read_file",
+            "args": {"path": "lcah/core/runtime.py"},
+            "content": "runtime implementation",
+            "turn_id": "turn-1",
+        },
+        {
+            "role": "tool",
+            "name": "run_shell",
+            "args": {"command": "pytest -q tests/test_quality.py"},
+            "content": "2 passed",
+            "turn_id": "turn-1",
+        },
+        history_item("assistant", "The verifier should preserve the runtime behavior.", "turn-1"),
+        history_item("user", "Continue from the checkpoint.", "turn-2"),
+    ]
+    summary = """Compacted session summary:
+- Goal: Implement the fix and run the test suite.
+- Prior user requests: Implement the fix and run the test suite.
+- Constraints and preferences: preserve the runtime behavior
+- Acceptance checks: pytest -q tests/test_quality.py
+- Files read: lcah/core/runtime.py
+- Files modified: -
+- Key decisions: preserve the runtime behavior
+- Tests and outcomes: pytest -q tests/test_quality.py -> 2 passed
+- Errors and blockers: -
+- Dependencies and commands: pytest -q tests/test_quality.py
+- Current progress: compacted 4 history items
+- Open blockers: -
+- Next step: continue from the latest preserved turn
+- Evidence: files=lcah/core/runtime.py; tests=2 passed
+- Critical context: lcah/core/runtime.py; pytest -q tests/test_quality.py; 2 passed"""
+
+    result = verify_compaction_continuity(
+        old,
+        [history_item("system", summary, "compact"), old[-1]],
+        summary,
+        keep_recent_turns=1,
+    )
+
+    assert result["status"] == QUALITY_PASSED
+    assert result["checks"]["critical_context_preserved"] is True
+
+    incomplete = summary.replace("lcah/core/runtime.py", "runtime.py").replace("pytest -q tests/test_quality.py", "pytest")
+    incomplete_result = verify_compaction_continuity(
+        old,
+        [history_item("system", incomplete, "compact"), old[-1]],
+        incomplete,
+        keep_recent_turns=1,
+    )
+
+    assert incomplete_result["status"] == QUALITY_REPAIR_REQUIRED
+    assert "critical_context_preserved" in incomplete_result["failures"]
 
 
 def test_compaction_verifier_requests_repair_when_recent_turn_is_lost():
