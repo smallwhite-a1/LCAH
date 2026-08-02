@@ -19,6 +19,7 @@ BENCHMARK_SCHEMA_VERSION = 1
 DEFAULT_BENCHMARK_PATH = Path("benchmarks/coding_tasks.json")
 DEFAULT_ARTIFACT_PATH = Path("benchmarks/benchmark-v1.json")
 DEFAULT_HARNESS_REGRESSION_V2_ARTIFACT_PATH = Path("artifacts/harness-regression-v2.json")
+DEFAULT_COMPRESSION_ABLATION_V2_ARTIFACT_PATH = Path("artifacts/compression-ablation-v2.json")
 DEFAULT_MODEL_NAME = "ScriptedModelClient"
 DEFAULT_MODEL_VERSION = "scripted-deterministic"
 DEFAULT_TEMPERATURE = 0.0
@@ -150,6 +151,8 @@ def _workspace_relative(path, workspace_root):
 
 def _scripted_outputs_for_task(task):
     outputs = SCRIPTED_MODEL_OUTPUTS.get(task["id"])
+    if outputs is None and task.get("category") == "context-pressure":
+        return ["<final>Fixture verified.</final>"]
     if outputs is None:
         raise ValueError(f"no scripted model outputs for benchmark task: {task['id']}")
     return list(outputs)
@@ -390,6 +393,7 @@ class BenchmarkEvaluator:
         max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
         timezone_name=DEFAULT_TIMEZONE,
         model_client_factory=None,
+        feature_flags=None,
     ):
         self.benchmark_path = Path(benchmark_path)
         self.artifact_path = Path(artifact_path)
@@ -403,6 +407,7 @@ class BenchmarkEvaluator:
         self.max_new_tokens = max_new_tokens
         self.timezone_name = timezone_name
         self.model_client_factory = model_client_factory
+        self.feature_flags = dict(feature_flags or {})
         self.repo_root = self.benchmark_path.resolve().parent.parent
 
     def load(self):
@@ -434,6 +439,7 @@ class BenchmarkEvaluator:
                     "top_p": self.top_p,
                     "max_new_tokens": self.max_new_tokens,
                 },
+                "feature_flags": dict(self.feature_flags),
                 "timezone": self.timezone_name,
                 "locale": _current_locale(),
             },
@@ -471,6 +477,7 @@ class BenchmarkEvaluator:
             approval_policy="auto",
             max_steps=int(task["step_budget"]),
             max_new_tokens=self.max_new_tokens,
+            feature_flags=self.feature_flags,
         )
         _apply_task_setup(agent, task, fixture_copy_root)
 
@@ -486,6 +493,7 @@ class BenchmarkEvaluator:
         task_state_path = agent.run_store.task_state_path(task_state)
         report_path = agent.run_store.report_path(task_state)
         report = agent.run_store.load_report(task_state.run_id)
+        prompt_metrics = _prompt_metrics(run_dir, report)
 
         artifact_path = _artifact_path_for_task(task)
         artifact_file = fixture_copy_root / artifact_path
@@ -548,6 +556,7 @@ class BenchmarkEvaluator:
             "initial_episodic_notes_empty": initial_episodic_notes_empty,
             "task_state": task_state.to_dict(),
             "report": report,
+            "prompt_metrics": prompt_metrics,
         }
 
     def _failure_category(
@@ -587,6 +596,7 @@ def run_fixed_benchmark(
     max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
     timezone_name=DEFAULT_TIMEZONE,
     model_client_factory=None,
+    feature_flags=None,
 ):
     evaluator = BenchmarkEvaluator(
         benchmark_path=benchmark_path,
@@ -599,8 +609,177 @@ def run_fixed_benchmark(
         max_new_tokens=max_new_tokens,
         timezone_name=timezone_name,
         model_client_factory=model_client_factory,
+        feature_flags=feature_flags,
     )
     return evaluator.run()
+
+
+def _prompt_metrics(run_dir, report):
+    prompt_events = []
+    completion_events = []
+    trace_path = Path(run_dir) / "trace.jsonl"
+    if trace_path.exists():
+        for line in trace_path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if event.get("event") == "prompt_built":
+                prompt_events.append(dict(event.get("prompt_metadata") or {}))
+            elif event.get("event") == "model_parsed":
+                completion_events.append(dict(event.get("completion_metadata") or {}))
+
+    if not prompt_events:
+        prompt_events = [dict(report.get("prompt_metadata") or {})]
+    prompt_chars = sum(int(item.get("prompt_chars", 0)) for item in prompt_events)
+    raw_prompt_chars = sum(
+        sum(int(section.get("raw_chars", 0)) for section in (item.get("sections") or {}).values())
+        for item in prompt_events
+    )
+    estimated_tokens = sum(
+        int((item.get("context_usage") or {}).get("total_estimated_tokens", 0))
+        for item in prompt_events
+    )
+    budget_reductions = sum(len(item.get("budget_reductions") or []) for item in prompt_events)
+    quality_passes = sum(
+        1 for item in prompt_events if bool((item.get("quality_verification") or {}).get("passed"))
+    )
+    input_tokens = sum(int(item.get("input_tokens", 0) or 0) for item in completion_events)
+    output_tokens = sum(int(item.get("output_tokens", 0) or 0) for item in completion_events)
+    compaction_count = len(report.get("compactions") or [])
+    compression_triggered = bool(budget_reductions or compaction_count or (raw_prompt_chars and prompt_chars < raw_prompt_chars))
+    return {
+        "prompt_count": len(prompt_events),
+        "prompt_chars": prompt_chars,
+        "raw_prompt_chars": raw_prompt_chars,
+        "prompt_compression_ratio": max(0.0, (raw_prompt_chars - prompt_chars) / raw_prompt_chars) if raw_prompt_chars else 0.0,
+        "estimated_prompt_tokens": estimated_tokens,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "budget_reduction_count": budget_reductions,
+        "compaction_count": compaction_count,
+        "quality_verifier_pass_rate": quality_passes / len(prompt_events) if prompt_events else 0.0,
+        "compression_triggered": compression_triggered,
+        "actual_input_tokens_available": input_tokens > 0,
+    }
+
+
+def _percentile(values, percentile):
+    values = sorted(float(value) for value in values)
+    if not values:
+        return 0.0
+    position = (len(values) - 1) * float(percentile)
+    lower = int(position)
+    upper = min(lower + 1, len(values) - 1)
+    fraction = position - lower
+    return values[lower] + (values[upper] - values[lower]) * fraction
+
+
+def _summarize_compression_rows(rows):
+    rows = list(rows)
+    passed = sum(1 for row in rows if row.get("passed") is True)
+    prompt_metrics = [row.get("prompt_metrics") or {} for row in rows]
+    triggered_metrics = [item for item in prompt_metrics if item.get("compression_triggered")]
+    input_token_available = sum(1 for item in prompt_metrics if item.get("actual_input_tokens_available"))
+    return {
+        "task_count": len(rows),
+        "passed": passed,
+        "failed": len(rows) - passed,
+        "pass_rate": passed / len(rows) if rows else 0.0,
+        "avg_prompt_chars": sum(item.get("prompt_chars", 0) for item in prompt_metrics) / len(rows) if rows else 0.0,
+        "avg_raw_prompt_chars": sum(item.get("raw_prompt_chars", 0) for item in prompt_metrics) / len(rows) if rows else 0.0,
+        "avg_prompt_compression_ratio": sum(item.get("prompt_compression_ratio", 0.0) for item in prompt_metrics) / len(rows) if rows else 0.0,
+        "p95_prompt_chars": _percentile([item.get("prompt_chars", 0) for item in prompt_metrics], 0.95),
+        "p95_raw_prompt_chars": _percentile([item.get("raw_prompt_chars", 0) for item in prompt_metrics], 0.95),
+        "p95_prompt_compression_ratio": _percentile(
+            [item.get("prompt_compression_ratio", 0.0) for item in prompt_metrics], 0.95
+        ),
+        "avg_estimated_prompt_tokens": sum(item.get("estimated_prompt_tokens", 0) for item in prompt_metrics) / len(rows) if rows else 0.0,
+        "input_tokens": sum(item.get("input_tokens", 0) for item in prompt_metrics),
+        "output_tokens": sum(item.get("output_tokens", 0) for item in prompt_metrics),
+        "budget_reduction_count": sum(item.get("budget_reduction_count", 0) for item in prompt_metrics),
+        "compaction_count": sum(item.get("compaction_count", 0) for item in prompt_metrics),
+        "quality_verifier_pass_rate": sum(item.get("quality_verifier_pass_rate", 0.0) for item in prompt_metrics) / len(rows) if rows else 0.0,
+        "triggered_task_count": len(triggered_metrics),
+        "triggered_avg_prompt_compression_ratio": (
+            sum(item.get("prompt_compression_ratio", 0.0) for item in triggered_metrics) / len(triggered_metrics)
+            if triggered_metrics
+            else 0.0
+        ),
+        "triggered_avg_estimated_prompt_tokens": (
+            sum(item.get("estimated_prompt_tokens", 0) for item in triggered_metrics) / len(triggered_metrics)
+            if triggered_metrics
+            else 0.0
+        ),
+        "triggered_quality_verifier_pass_rate": (
+            sum(item.get("quality_verifier_pass_rate", 0.0) for item in triggered_metrics) / len(triggered_metrics)
+            if triggered_metrics
+            else 0.0
+        ),
+        "actual_input_token_coverage": input_token_available / len(rows) if rows else 0.0,
+        "avg_tool_steps": sum(int(row.get("tool_steps", 0)) for row in rows) / len(rows) if rows else 0.0,
+        "avg_attempts": sum(int(row.get("attempts", 0)) for row in rows) / len(rows) if rows else 0.0,
+    }
+
+
+def run_compression_ablation_v2(
+    benchmark_path=DEFAULT_BENCHMARK_PATH,
+    artifact_path=DEFAULT_COMPRESSION_ABLATION_V2_ARTIFACT_PATH,
+    workspace_root=None,
+    model_name=DEFAULT_MODEL_NAME,
+    model_version=DEFAULT_MODEL_VERSION,
+    temperature=DEFAULT_TEMPERATURE,
+    top_p=DEFAULT_TOP_P,
+    max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
+    timezone_name=DEFAULT_TIMEZONE,
+    model_client_factory=None,
+):
+    """Run paired compression-on/off evaluations on fresh workspaces."""
+
+    artifact_path = Path(artifact_path)
+    workspace_root = Path(workspace_root or tempfile.mkdtemp(prefix="lcah-compression-ablation-"))
+    variants = {
+        "compression_on": {"context_reduction": True, "context_compaction": True},
+        "compression_off": {"context_reduction": False, "context_compaction": False},
+    }
+    summaries = {}
+    rows = []
+    for variant, feature_flags in variants.items():
+        evaluator = BenchmarkEvaluator(
+            benchmark_path=benchmark_path,
+            artifact_path=artifact_path.parent / f"{artifact_path.stem}-{variant}.json",
+            workspace_root=workspace_root / variant,
+            model_name=model_name,
+            model_version=model_version,
+            temperature=temperature,
+            top_p=top_p,
+            max_new_tokens=max_new_tokens,
+            timezone_name=timezone_name,
+            model_client_factory=model_client_factory,
+            feature_flags=feature_flags,
+        )
+        result = evaluator.run()
+        variant_rows = []
+        for row in result["rows"]:
+            paired_row = dict(row)
+            paired_row["variant"] = variant
+            variant_rows.append(paired_row)
+        summaries[variant] = _summarize_compression_rows(variant_rows)
+        rows.extend(variant_rows)
+
+    artifact = {
+        "artifact_type": "compression-ablation-v2",
+        "schema_version": BENCHMARK_SCHEMA_VERSION,
+        "benchmark": {
+            "source": str(Path(benchmark_path).resolve().relative_to(Path(benchmark_path).resolve().parent.parent)),
+            "task_count": summaries["compression_on"]["task_count"],
+        },
+        "variants": summaries,
+        "rows": rows,
+    }
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(json.dumps(artifact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return artifact
 
 
 def run_harness_regression_v2(

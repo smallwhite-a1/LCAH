@@ -1,7 +1,12 @@
 """Session compaction boundary."""
 
+from .compaction_summary import build_summary
 from .context_usage import estimate_tokens
-from .quality import verify_compaction_continuity
+from .quality import (
+    SUMMARY_CONTRACT,
+    critical_context_signals,
+    verify_compaction_continuity,
+)
 from .workspace import now
 
 
@@ -15,6 +20,7 @@ class CompactManager:
         if len(groups) <= keep_recent_turns:
             summary = self._summary(trigger, history, history, "")
             summary["applied"] = False
+            summary["quality_repair_attempts"] = 0
             summary["quality_verification"] = verify_compaction_continuity(
                 history, history, "", keep_recent_turns=keep_recent_turns
             )
@@ -25,25 +31,37 @@ class CompactManager:
         kept_turns = groups[-keep_recent_turns:]
         compacted_items = [item for _, items in compacted_turns for item in items]
         kept_items = [item for _, items in kept_turns for item in items]
-        summary_text = self._summary_text(compacted_items)
-        summary_item = self.agent.turn_history.enrich(
-            {
-                "role": "system",
-                "kind": "compact_summary",
-                "content": summary_text,
-                "created_at": now(),
-                "source": "compact",
-            }
-        )
-        compacted_history = [summary_item, *kept_items]
-        quality_verification = verify_compaction_continuity(
-            history,
-            compacted_history,
-            summary_text,
-            keep_recent_turns=keep_recent_turns,
-        )
+        quality_repair_attempts = 0
+        summary_text = ""
+        compacted_history = []
+        quality_verification = None
+        for attempt in range(2):
+            summary_text = self._summary_text(compacted_items)
+            if attempt == 1:
+                summary_text = self._repair_summary_text(compacted_items, summary_text)
+            summary_item = self.agent.turn_history.enrich(
+                {
+                    "role": "system",
+                    "kind": "compact_summary",
+                    "content": summary_text,
+                    "created_at": now(),
+                    "source": "compact",
+                }
+            )
+            compacted_history = [summary_item, *kept_items]
+            quality_verification = verify_compaction_continuity(
+                history,
+                compacted_history,
+                summary_text,
+                keep_recent_turns=keep_recent_turns,
+            )
+            if quality_verification["passed"]:
+                break
+            if attempt == 0:
+                quality_repair_attempts += 1
         summary = self._summary(trigger, history, compacted_history, summary_text)
         summary["applied"] = quality_verification["passed"]
+        summary["quality_repair_attempts"] = quality_repair_attempts
         summary["quality_verification"] = quality_verification
         if not quality_verification["passed"]:
             self.agent.session_event_bus.emit("compaction_quality_failed", summary)
@@ -56,6 +74,30 @@ class CompactManager:
             self.agent.emit_trace(self.agent.current_task_state, "compaction_started", {"trigger": trigger, "pre_tokens": summary["pre_tokens"]})
             self.agent.emit_trace(self.agent.current_task_state, "compaction_finished", summary)
         return summary
+
+    @staticmethod
+    def _repair_summary_text(items, summary_text):
+        """Add omitted evidence on the bounded repair attempt."""
+
+        summary_text = str(summary_text or "")
+        if not all(marker in summary_text for marker in SUMMARY_CONTRACT):
+            return summary_text
+        summary_lower = summary_text.lower()
+        missing = [
+            signal
+            for signal in critical_context_signals(items)
+            if signal.lower() not in summary_lower
+        ]
+        if not missing:
+            return summary_text
+        evidence = "; ".join(missing)
+        return "\n".join(
+            [
+                summary_text,
+                f"- Evidence: repair_required_signals={evidence}",
+                f"- Critical context: repaired={evidence}",
+            ]
+        )
 
     @staticmethod
     def _group(history):
@@ -83,32 +125,4 @@ class CompactManager:
         }
 
     def _summary_text(self, items):
-        files_read = []
-        files_modified = []
-        user_requests = []
-        assistant_notes = []
-        for item in items:
-            if item.get("role") == "user":
-                user_requests.append(str(item.get("content", "")).strip())
-            elif item.get("role") == "assistant":
-                assistant_notes.append(str(item.get("content", "")).strip())
-            elif item.get("role") == "tool":
-                path = str(item.get("args", {}).get("path", "")).strip()
-                if item.get("name") == "read_file" and path:
-                    files_read.append(path)
-                if item.get("name") in {"write_file", "patch_file"} and path:
-                    files_modified.append(path)
-        return "\n".join(
-            [
-                "Compacted session summary:",
-                f"- Goal: {user_requests[-1] if user_requests else '-'}",
-                "- Constraints and preferences: -",
-                f"- Files read: {', '.join(sorted(set(files_read))) or '-'}",
-                f"- Files modified: {', '.join(sorted(set(files_modified))) or '-'}",
-                f"- Key decisions: {assistant_notes[-1] if assistant_notes else '-'}",
-                f"- Current progress: compacted {len(items)} history items",
-                "- Open blockers: -",
-                "- Next step: continue from the latest preserved turn",
-                "- Critical context: earlier turns were compacted; use preserved latest turns for exact wording",
-            ]
-        )
+        return build_summary(items)

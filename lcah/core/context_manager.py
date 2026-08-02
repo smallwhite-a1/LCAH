@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..features import memory as memorylib, skills as skillslib
+from ..features import memory as memorylib
+from ..features import skills as skillslib
 from .context_usage import ContextUsageAnalyzer
 from .quality import verify_prompt_continuity
 from .turn_history import TurnHistoryBuilder, tail_clip
@@ -197,11 +198,9 @@ class ContextManager:
         history_raw = self.history_builder.raw_text(history)
         return {
             "prefix": SectionRender(raw=section_texts["prefix"], budget=len(section_texts["prefix"]), rendered=section_texts["prefix"], details={}),
-            CHECKPOINT_SECTION: SectionRender(
-                raw=section_texts[CHECKPOINT_SECTION],
-                budget=self.section_budgets.get(CHECKPOINT_SECTION, len(section_texts[CHECKPOINT_SECTION])),
-                rendered=section_texts[CHECKPOINT_SECTION],
-                details={},
+            CHECKPOINT_SECTION: self._render_checkpoint(
+                section_texts[CHECKPOINT_SECTION],
+                self.section_budgets.get(CHECKPOINT_SECTION),
             ),
             "memory": SectionRender(raw=section_texts["memory"], budget=len(section_texts["memory"]), rendered=section_texts["memory"], details={}),
             "skills": SectionRender(raw=section_texts["skills"], budget=len(section_texts["skills"]), rendered=section_texts["skills"], details={}),
@@ -234,6 +233,11 @@ class ContextManager:
         floors.update(self._section_floor_overrides)
         return floors
 
+    @staticmethod
+    def _render_checkpoint(raw, budget=None):
+        budget = int(budget if budget is not None else len(raw))
+        return SectionRender(raw=raw, budget=budget, rendered=tail_clip(raw, budget), details={"truncated": len(raw) > budget})
+
     def _render_sections(self, section_texts, budgets, selected_notes=None):
         rendered = {}
         for section in SECTION_ORDER:
@@ -243,12 +247,7 @@ class ContextManager:
                 rendered[section] = SectionRender(raw=raw, budget=0, rendered=raw, details={})
             elif section == CHECKPOINT_SECTION:
                 raw = section_texts[section]
-                rendered[section] = SectionRender(
-                    raw=raw,
-                    budget=int(budget or len(raw)),
-                    rendered=raw,
-                    details={},
-                )
+                rendered[section] = self._render_checkpoint(raw, budget)
             elif section == "relevant_memory":
                 rendered[section] = self._render_relevant_memory(selected_notes or [], int(budget or 0))
             elif section == "history":
@@ -263,7 +262,7 @@ class ContextManager:
         header = "Relevant memory:"
         note_texts = [str(note.get("text", "")) for note in selected_notes if str(note.get("text", "")).strip()]
         raw_lines = [header] + [f"- {text}" for text in note_texts]
-        raw = "\n".join(raw_lines) if note_texts else "\n".join([header, "- none"])
+        raw = "\n".join(raw_lines) if note_texts else f"{header}\n- none"
         if not note_texts:
             rendered = raw
             return SectionRender(
@@ -289,7 +288,7 @@ class ContextManager:
                 break
             per_note_budget -= 1
 
-        if len(rendered) > budget and budget > 0:
+        if len(rendered) > budget > 0:
             rendered = tail_clip(raw, budget)
             rendered_notes = [rendered]
 
@@ -353,6 +352,8 @@ class ContextManager:
                 "budget_chars": int(budgets.get(section, 0)),
                 "rendered_chars": rendered[section].rendered_chars,
             }
+            if section == CHECKPOINT_SECTION:
+                section_metadata[section]["truncated"] = bool(rendered[section].details.get("truncated", False))
         section_metadata[CURRENT_REQUEST_SECTION] = {
             "raw_chars": len(section_texts[CURRENT_REQUEST_SECTION]),
             "budget_chars": None,

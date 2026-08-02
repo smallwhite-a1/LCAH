@@ -271,6 +271,12 @@ pytest tests/ -q
 
 # 真实 provider 烟测需要 key
 LCAH_LIVE_SMOKE=1 pytest tests/test_release_smoke.py -q
+
+# SWE-bench Lite 10/50/100 题 manifest 和可恢复批量入口
+python scripts/run_swebench_lite.py --tasks-file /path/to/swebench-lite.json --count 10
+
+# LCAH 上下文压缩 A/B 机制验证
+python scripts/run_compression_ablation.py
 ```
 
 ## 文档
@@ -281,6 +287,7 @@ LCAH_LIVE_SMOKE=1 pytest tests/test_release_smoke.py -q
 | [分层记忆 + auto-dream](docs/memory.md) | working memory、daily logs、durable topics 和后台整合。 |
 | [Skills](docs/skills.md) | `SKILL.md` 目录结构、内置技能和自定义 workflow。 |
 | [Sandbox](docs/sandbox.md) | `run_shell` 隔离模式、backend 选择和文件系统边界。 |
+| [SWE-bench Lite](docs/swebench-lite.md) | 10/50 题确定性抽样、manifest 和断点续跑入口。 |
 
 ### v3 发布包
 

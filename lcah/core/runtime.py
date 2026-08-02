@@ -57,6 +57,7 @@ DEFAULT_FEATURE_FLAGS = {
     "memory": True,
     "relevant_memory": True,
     "context_reduction": True,
+    "context_compaction": True,
     "prompt_cache": True,
 }
 CHECKPOINT_SCHEMA_VERSION = "phase1-v1"
@@ -613,6 +614,7 @@ class LCAH(RuntimeSecretsMixin, RuntimeCheckpointsMixin):
         if (
             metadata.get("prompt_over_budget")
             and len(self.session.get("history", [])) > 4
+            and self.feature_enabled("context_compaction")
         ):
             compaction = self.compact_history(trigger="auto_prompt_over_budget")
             prompt, metadata = self.context_manager.build(user_message)
