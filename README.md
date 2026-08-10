@@ -275,8 +275,16 @@ LCAH_LIVE_SMOKE=1 pytest tests/test_release_smoke.py -q
 # SWE-bench Lite 10/50/100 题 manifest 和可恢复批量入口
 python scripts/run_swebench_lite.py --tasks-file /path/to/swebench-lite.json --count 10
 
-# LCAH 上下文压缩 A/B 机制验证
+# LCAH 上下文压缩确定性机制回归（不代表 agent 能力）
 python scripts/run_compression_ablation.py
+
+# 验证评测基础设施能检出人为注入的退化
+python scripts/run_evaluation_foundation_sanity.py \
+  --output /tmp/lcah-evaluation-foundation-sanity.json
+
+# 模块能力评测：压缩、持久记忆、checkpoint 恢复
+python scripts/run_module_capability_evals.py \
+  --output-dir /tmp/lcah-module-evals --repetitions 3
 ```
 
 ## 文档
@@ -288,6 +296,7 @@ python scripts/run_compression_ablation.py
 | [Skills](docs/skills.md) | `SKILL.md` 目录结构、内置技能和自定义 workflow。 |
 | [Sandbox](docs/sandbox.md) | `run_shell` 隔离模式、backend 选择和文件系统边界。 |
 | [SWE-bench Lite](docs/swebench-lite.md) | 10/50 题确定性抽样、manifest 和断点续跑入口。 |
+| [Evaluation methodology](docs/evaluation-methodology.md) | 分层评测架构、模块 benchmark、统计方法、mutation sensitivity 和后续端到端方案。 |
 
 ### v3 发布包
 

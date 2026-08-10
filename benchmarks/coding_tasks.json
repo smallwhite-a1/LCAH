@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Fixed harness regression tasks for LCAH benchmark v3. Each run uses a fresh fixture copy and deterministic scripted outputs; 20 context-pressure tasks exercise automatic compression with outcome-only verifiers.",
+  "description": "Deterministic harness regression tasks for LCAH. These scripted trajectories verify evaluation plumbing and must not be used to claim coding-agent capability; 20 context-pressure rows exercise automatic compression mechanics with outcome-only verifiers.",
   "tasks": [
     {
       "id": "readme_intro_locked",

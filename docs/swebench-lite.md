@@ -1,5 +1,60 @@
 # SWE-bench Lite Evaluation
 
+## Evaluation levels
+
+LCAH separates deterministic engineering regression from agent capability
+evaluation. `benchmarks/coding_tasks.json` and `run_compression_ablation.py`
+use scripted model outputs, so a 32/32 result means the harness, artifacts,
+tool plumbing, and fixed verifiers are behaving as expected. It is not evidence
+that a live coding agent can solve those tasks.
+
+The phase-one evaluation foundation provides versioned task and attempt
+contracts, repeated and paired execution, task-level bootstrap confidence
+intervals, failure categories, and a sensitivity check. Run the sensitivity
+check with:
+
+```bash
+python scripts/run_evaluation_foundation_sanity.py \
+  --output /tmp/lcah-evaluation-foundation-sanity.json
+```
+
+The command deliberately degrades one variant and fails unless the evaluation
+detects the expected negative paired result. Real capability suites plug a live
+runner into the same experiment protocol; they are separate from the scripted
+regression suite.
+
+## Module capability evaluations
+
+Phase two evaluates production module behavior without asking a scripted model
+to emit a predetermined final answer:
+
+```bash
+python scripts/run_module_capability_evals.py \
+  --output-dir /tmp/lcah-module-evals \
+  --repetitions 3
+```
+
+Each module suite contains 16 strict binary tasks: four basic, six composite,
+and six adversarial. The compression suite probes task state and compares the
+production summary with full context and tail truncation. The memory suite
+exercises promotion, retrieval, conflict replacement, forbidden persistence,
+distractor resistance, action grounding, and abstention using the production
+durable store. The recovery suite uses real session persistence, checkpoint
+creation, resume-state evaluation, and injected loss or drift around the
+persistence boundary.
+
+The summary reports attempt-level success, task-level bootstrap intervals,
+strict repeated reliability, paired deltas, module diagnostics, and a
+sensitivity check for each weak baseline. These are module capability results,
+not an end-to-end coding-agent score: they intentionally isolate LCAH code from
+model reasoning quality.
+
+The calibrated production score for each module must remain between 60% and
+85%; this is validated after grading and never changes a task result. Four
+named small mutations per module must each flip 1–6 passing tasks and reduce
+the score by at least 6.25 percentage points. Reports include the exact flipped
+task IDs and separate basic/composite/adversarial pass rates.
+
 LCAH currently supports a small, reproducible preparation layer for SWE-bench
 Lite. This phase intentionally stops before the official Docker grader. It
 handles deterministic task selection, keeps gold patches out of the agent
@@ -66,7 +121,7 @@ python scripts/run_swebench_lite.py \
 
 ## Compression A/B
 
-Before connecting a real model, run the deterministic local harness ablation:
+Before connecting a real model, run the deterministic local harness regression:
 
 ```bash
 python scripts/run_compression_ablation.py
@@ -79,7 +134,9 @@ group disables both budget reduction and automatic history compaction. Both
 groups use outcome-only final verifiers that do not inspect compaction events.
 The artifact reports paired pass rates, prompt sizes, estimated tokens,
 compaction counts, budget reductions, and prompt Verifier results. This is a
-mechanism regression test, not a SWE-bench score.
+mechanism regression test, not a SWE-bench score or a compression capability
+measurement. Because both sides follow scripted trajectories, their pass rates
+must not be used to claim that compression preserves live-agent task quality.
 
 Read the compression metrics at three levels:
 

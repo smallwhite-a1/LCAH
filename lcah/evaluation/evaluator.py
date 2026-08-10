@@ -419,6 +419,8 @@ class BenchmarkEvaluator:
         summary = summarize_rows(rows)
         artifact = {
             "schema_version": BENCHMARK_SCHEMA_VERSION,
+            "evaluation_kind": "deterministic_harness_regression",
+            "capability_claims_allowed": False,
             "captured_at": _now_in_timezone(self.timezone_name),
             "runtime": {
                 "commit_sha": _git_value(["rev-parse", "HEAD"], cwd=self.repo_root),

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "dataset": {
+    "name": "evaluation-foundation-sanity",
+    "version": "1"
+  },
+  "tasks": [
+    {
+      "id": "stable-edit",
+      "prompt": "Apply the stable edit.",
+      "fixture": "tests/fixtures/bench_repo_patch",
+      "grader": {"kind": "deterministic-sanity", "expected": "pass"},
+      "family": "sanity"
+    },
+    {
+      "id": "injected-regression",
+      "prompt": "Exercise the deliberately degraded path.",
+      "fixture": "tests/fixtures/bench_repo_patch",
+      "grader": {"kind": "deterministic-sanity", "expected": "variant-dependent"},
+      "family": "sanity"
+    }
+  ]
+}
