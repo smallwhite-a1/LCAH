@@ -101,6 +101,8 @@ def test_run_fixed_benchmark_reports_metadata_and_success_definition(tmp_path):
     assert persisted == artifact
 
     assert artifact["schema_version"] == 1
+    assert artifact["evaluation_kind"] == "deterministic_harness_regression"
+    assert artifact["capability_claims_allowed"] is False
     assert artifact["summary"] == {
         "total_tasks": 32,
         "passed": 32,
