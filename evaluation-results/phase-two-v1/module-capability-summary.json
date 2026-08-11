@@ -1,0 +1,821 @@
+{
+  "artifact_type": "module_capability_summary",
+  "modules": {
+    "compression": {
+      "analysis": {
+        "calibration": {
+          "difficulty": {
+            "adversarial": {
+              "pass_rate": 0.3333333333333333,
+              "task_count": 6
+            },
+            "basic": {
+              "pass_rate": 1.0,
+              "task_count": 4
+            },
+            "composite": {
+              "pass_rate": 1.0,
+              "task_count": 6
+            }
+          },
+          "mutations": {
+            "drop_commands": {
+              "flipped_task_ids": [
+                "c04-command",
+                "c09-joint-state"
+              ],
+              "pass_rate": 0.625,
+              "score_delta": -0.125
+            },
+            "latest_decision_only_bug": {
+              "flipped_task_ids": [
+                "c03-path",
+                "c07-decision"
+              ],
+              "pass_rate": 0.625,
+              "score_delta": -0.125
+            },
+            "reduce_recent_turns": {
+              "flipped_task_ids": [
+                "c02-constraint"
+              ],
+              "pass_rate": 0.6875,
+              "score_delta": -0.0625
+            },
+            "skip_stale_cleanup": {
+              "flipped_task_ids": [
+                "c05-outcome",
+                "c06-blocker"
+              ],
+              "pass_rate": 0.625,
+              "score_delta": -0.125
+            }
+          },
+          "production_pass_rate": 0.75,
+          "production_variant": "lcah_compression"
+        },
+        "mutation_checks": {
+          "drop_commands": {
+            "detected": true,
+            "flipped_task_ids": [
+              "c04-command",
+              "c09-joint-state"
+            ],
+            "pass_rate": 0.625,
+            "score_delta": -0.125
+          },
+          "latest_decision_only_bug": {
+            "detected": true,
+            "flipped_task_ids": [
+              "c03-path",
+              "c07-decision"
+            ],
+            "pass_rate": 0.625,
+            "score_delta": -0.125
+          },
+          "reduce_recent_turns": {
+            "detected": true,
+            "flipped_task_ids": [
+              "c02-constraint"
+            ],
+            "pass_rate": 0.6875,
+            "score_delta": -0.0625
+          },
+          "skip_stale_cleanup": {
+            "detected": true,
+            "flipped_task_ids": [
+              "c05-outcome",
+              "c06-blocker"
+            ],
+            "pass_rate": 0.625,
+            "score_delta": -0.125
+          }
+        },
+        "paired": {
+          "baseline": "lcah_compression",
+          "baseline_pass_rate": 0.75,
+          "baseline_wins": 36,
+          "pair_count": 48,
+          "ties": 12,
+          "treatment": "tail_truncation",
+          "treatment_minus_baseline": -0.75,
+          "treatment_pass_rate": 0.0,
+          "treatment_wins": 0
+        },
+        "sensitivity_check": {
+          "comparison": "tail_truncation_below_lcah_compression",
+          "detected": true
+        },
+        "variants": {
+          "drop_commands": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "critical_state_lost": 9,
+              "stale_state_leakage": 9
+            },
+            "pass_at_1": 0.625,
+            "pass_power_k": 0.625,
+            "pass_rate": 0.625,
+            "pass_rate_ci_95": [
+              0.375,
+              0.875
+            ],
+            "passed_attempts": 30,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "full_context": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "critical_state_lost": 3,
+              "stale_state_leakage": 9
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5625,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "latest_decision_only_bug": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "critical_state_lost": 9,
+              "stale_state_leakage": 9
+            },
+            "pass_at_1": 0.625,
+            "pass_power_k": 0.625,
+            "pass_rate": 0.625,
+            "pass_rate_ci_95": [
+              0.375,
+              0.875
+            ],
+            "passed_attempts": 30,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "lcah_compression": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "critical_state_lost": 3,
+              "stale_state_leakage": 9
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5625,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "reduce_recent_turns": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "critical_state_lost": 6,
+              "stale_state_leakage": 9
+            },
+            "pass_at_1": 0.6875,
+            "pass_power_k": 0.6875,
+            "pass_rate": 0.6875,
+            "pass_rate_ci_95": [
+              0.4375,
+              0.875
+            ],
+            "passed_attempts": 33,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "skip_stale_cleanup": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "critical_state_lost": 9,
+              "stale_state_leakage": 9
+            },
+            "pass_at_1": 0.625,
+            "pass_power_k": 0.625,
+            "pass_rate": 0.625,
+            "pass_rate_ci_95": [
+              0.375,
+              0.875
+            ],
+            "passed_attempts": 30,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "tail_truncation": {
+            "attempt_count": 48,
+            "cost_per_success_usd": null,
+            "failure_categories": {
+              "critical_state_lost": 48
+            },
+            "pass_at_1": 0.0,
+            "pass_power_k": 0.0,
+            "pass_rate": 0.0,
+            "pass_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "passed_attempts": 0,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          }
+        }
+      },
+      "artifact": "compression-capability.json",
+      "metrics": {
+        "drop_commands": {
+          "compression_ratio": 0.7867690773342573,
+          "critical_recall": 0.8333333333333334,
+          "stale_leakage": 0.1875
+        },
+        "full_context": {
+          "compression_ratio": 0.04855864364094262,
+          "critical_recall": 0.9375,
+          "stale_leakage": 0.1875
+        },
+        "latest_decision_only_bug": {
+          "compression_ratio": 0.7857695966454336,
+          "critical_recall": 0.8125,
+          "stale_leakage": 0.1875
+        },
+        "lcah_compression": {
+          "compression_ratio": 0.7851751862762383,
+          "critical_recall": 0.9375,
+          "stale_leakage": 0.1875
+        },
+        "reduce_recent_turns": {
+          "compression_ratio": 0.7857128206848404,
+          "critical_recall": 0.875,
+          "stale_leakage": 0.1875
+        },
+        "skip_stale_cleanup": {
+          "compression_ratio": 0.7865221691217381,
+          "critical_recall": 0.8125,
+          "stale_leakage": 0.1875
+        },
+        "tail_truncation": {
+          "compression_ratio": 0.7532250008128142,
+          "critical_recall": 0.0,
+          "stale_leakage": 0.0
+        }
+      },
+      "task_count": 16
+    },
+    "memory": {
+      "analysis": {
+        "calibration": {
+          "difficulty": {
+            "adversarial": {
+              "pass_rate": 0.3333333333333333,
+              "task_count": 6
+            },
+            "basic": {
+              "pass_rate": 1.0,
+              "task_count": 4
+            },
+            "composite": {
+              "pass_rate": 1.0,
+              "task_count": 6
+            }
+          },
+          "mutations": {
+            "disable_conflict_replacement": {
+              "flipped_task_ids": [
+                "m05-update",
+                "m11-update-preference"
+              ],
+              "pass_rate": 0.625,
+              "score_delta": -0.125
+            },
+            "retrieval_limit_one": {
+              "flipped_task_ids": [
+                "m10-joint2"
+              ],
+              "pass_rate": 0.6875,
+              "score_delta": -0.0625
+            },
+            "similar_distractor_injection": {
+              "flipped_task_ids": [
+                "m07-distractor",
+                "m09-scale10"
+              ],
+              "pass_rate": 0.625,
+              "score_delta": -0.125
+            },
+            "skip_forbidden_filter": {
+              "flipped_task_ids": [
+                "m03-secret",
+                "m06-transient"
+              ],
+              "pass_rate": 0.625,
+              "score_delta": -0.125
+            }
+          },
+          "production_pass_rate": 0.75,
+          "production_variant": "memory_on"
+        },
+        "mutation_checks": {
+          "disable_conflict_replacement": {
+            "detected": true,
+            "flipped_task_ids": [
+              "m05-update",
+              "m11-update-preference"
+            ],
+            "pass_rate": 0.625,
+            "score_delta": -0.125
+          },
+          "retrieval_limit_one": {
+            "detected": true,
+            "flipped_task_ids": [
+              "m10-joint2"
+            ],
+            "pass_rate": 0.6875,
+            "score_delta": -0.0625
+          },
+          "similar_distractor_injection": {
+            "detected": true,
+            "flipped_task_ids": [
+              "m07-distractor",
+              "m09-scale10"
+            ],
+            "pass_rate": 0.625,
+            "score_delta": -0.125
+          },
+          "skip_forbidden_filter": {
+            "detected": true,
+            "flipped_task_ids": [
+              "m03-secret",
+              "m06-transient"
+            ],
+            "pass_rate": 0.625,
+            "score_delta": -0.125
+          }
+        },
+        "paired": {
+          "baseline": "memory_on",
+          "baseline_pass_rate": 0.75,
+          "baseline_wins": 27,
+          "pair_count": 48,
+          "ties": 15,
+          "treatment": "memory_disabled",
+          "treatment_minus_baseline": -0.4375,
+          "treatment_pass_rate": 0.3125,
+          "treatment_wins": 6
+        },
+        "sensitivity_check": {
+          "comparison": "memory_disabled_below_memory_on",
+          "detected": true
+        },
+        "variants": {
+          "disable_conflict_replacement": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "forbidden_persistence": 12,
+              "memory_not_applied": 6
+            },
+            "pass_at_1": 0.625,
+            "pass_power_k": 0.625,
+            "pass_rate": 0.625,
+            "pass_rate_ci_95": [
+              0.375,
+              0.875
+            ],
+            "passed_attempts": 30,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "memory_disabled": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "memory_not_applied": 33
+            },
+            "pass_at_1": 0.3125,
+            "pass_power_k": 0.3125,
+            "pass_rate": 0.3125,
+            "pass_rate_ci_95": [
+              0.125,
+              0.5625
+            ],
+            "passed_attempts": 15,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "memory_irrelevant": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "forbidden_persistence": 6,
+              "memory_not_applied": 6
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5625,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "memory_on": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "forbidden_persistence": 6,
+              "memory_not_applied": 6
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5625,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "retrieval_limit_one": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "forbidden_persistence": 6,
+              "memory_not_applied": 9
+            },
+            "pass_at_1": 0.6875,
+            "pass_power_k": 0.6875,
+            "pass_rate": 0.6875,
+            "pass_rate_ci_95": [
+              0.4375,
+              0.875
+            ],
+            "passed_attempts": 33,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "similar_distractor_injection": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "forbidden_persistence": 6,
+              "memory_not_applied": 12
+            },
+            "pass_at_1": 0.625,
+            "pass_power_k": 0.625,
+            "pass_rate": 0.625,
+            "pass_rate_ci_95": [
+              0.375,
+              0.875
+            ],
+            "passed_attempts": 30,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "skip_forbidden_filter": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "forbidden_persistence": 12,
+              "memory_not_applied": 6
+            },
+            "pass_at_1": 0.625,
+            "pass_power_k": 0.625,
+            "pass_rate": 0.625,
+            "pass_rate_ci_95": [
+              0.375,
+              0.875
+            ],
+            "passed_attempts": 30,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          }
+        }
+      },
+      "artifact": "memory-capability.json",
+      "metrics": {
+        "disable_conflict_replacement": {
+          "forbidden_persistence": 0.25,
+          "retrieval_recall": 0.921875,
+          "superseded_count": 0.125,
+          "write_count": 1.0625
+        },
+        "memory_disabled": {
+          "forbidden_persistence": 0.0,
+          "retrieval_recall": 0.3125,
+          "superseded_count": 0.0,
+          "write_count": 0.0
+        },
+        "memory_irrelevant": {
+          "forbidden_persistence": 0.125,
+          "retrieval_recall": 0.921875,
+          "superseded_count": 0.125,
+          "write_count": 1.0625
+        },
+        "memory_on": {
+          "forbidden_persistence": 0.125,
+          "retrieval_recall": 0.921875,
+          "superseded_count": 0.125,
+          "write_count": 1.0625
+        },
+        "retrieval_limit_one": {
+          "forbidden_persistence": 0.125,
+          "retrieval_recall": 0.859375,
+          "superseded_count": 0.125,
+          "write_count": 1.0625
+        },
+        "similar_distractor_injection": {
+          "forbidden_persistence": 0.125,
+          "retrieval_recall": 0.796875,
+          "superseded_count": 0.125,
+          "write_count": 1.0625
+        },
+        "skip_forbidden_filter": {
+          "forbidden_persistence": 0.25,
+          "retrieval_recall": 0.921875,
+          "superseded_count": 0.125,
+          "write_count": 1.0625
+        }
+      },
+      "task_count": 16
+    },
+    "recovery": {
+      "analysis": {
+        "calibration": {
+          "difficulty": {
+            "adversarial": {
+              "pass_rate": 0.5,
+              "task_count": 6
+            },
+            "basic": {
+              "pass_rate": 1.0,
+              "task_count": 4
+            },
+            "composite": {
+              "pass_rate": 1.0,
+              "task_count": 6
+            }
+          },
+          "mutations": {
+            "drop_todos": {
+              "flipped_task_ids": [
+                "r03-todo"
+              ],
+              "pass_rate": 0.75,
+              "score_delta": -0.0625
+            },
+            "ignore_schema_mismatch": {
+              "flipped_task_ids": [
+                "r07-schema"
+              ],
+              "pass_rate": 0.75,
+              "score_delta": -0.0625
+            },
+            "replay_committed_operation": {
+              "flipped_task_ids": [
+                "r08-exactly-once"
+              ],
+              "pass_rate": 0.75,
+              "score_delta": -0.0625
+            },
+            "skip_freshness_check": {
+              "flipped_task_ids": [
+                "r06-freshness",
+                "r12-consecutive-stale"
+              ],
+              "pass_rate": 0.6875,
+              "score_delta": -0.125
+            }
+          },
+          "production_pass_rate": 0.8125,
+          "production_variant": "checkpoint_resume"
+        },
+        "mutation_checks": {
+          "drop_todos": {
+            "detected": true,
+            "flipped_task_ids": [
+              "r03-todo"
+            ],
+            "pass_rate": 0.75,
+            "score_delta": -0.0625
+          },
+          "ignore_schema_mismatch": {
+            "detected": true,
+            "flipped_task_ids": [
+              "r07-schema"
+            ],
+            "pass_rate": 0.75,
+            "score_delta": -0.0625
+          },
+          "replay_committed_operation": {
+            "detected": true,
+            "flipped_task_ids": [
+              "r08-exactly-once"
+            ],
+            "pass_rate": 0.75,
+            "score_delta": -0.0625
+          },
+          "skip_freshness_check": {
+            "detected": true,
+            "flipped_task_ids": [
+              "r06-freshness",
+              "r12-consecutive-stale"
+            ],
+            "pass_rate": 0.6875,
+            "score_delta": -0.125
+          }
+        },
+        "paired": {
+          "baseline": "checkpoint_resume",
+          "baseline_pass_rate": 0.8125,
+          "baseline_wins": 24,
+          "pair_count": 48,
+          "ties": 24,
+          "treatment": "lossy_resume",
+          "treatment_minus_baseline": -0.5,
+          "treatment_pass_rate": 0.3125,
+          "treatment_wins": 0
+        },
+        "sensitivity_check": {
+          "comparison": "lossy_resume_below_checkpoint_resume",
+          "detected": true
+        },
+        "variants": {
+          "checkpoint_resume": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "recovery_state_loss": 9
+            },
+            "pass_at_1": 0.8125,
+            "pass_power_k": 0.8125,
+            "pass_rate": 0.8125,
+            "pass_rate_ci_95": [
+              0.625,
+              1.0
+            ],
+            "passed_attempts": 39,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "drop_todos": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "recovery_state_loss": 12
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5625,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "ignore_schema_mismatch": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "recovery_state_loss": 12
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "lossy_resume": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "recovery_state_loss": 33
+            },
+            "pass_at_1": 0.3125,
+            "pass_power_k": 0.3125,
+            "pass_rate": 0.3125,
+            "pass_rate_ci_95": [
+              0.125,
+              0.5625
+            ],
+            "passed_attempts": 15,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "replay_committed_operation": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "recovery_state_loss": 12
+            },
+            "pass_at_1": 0.75,
+            "pass_power_k": 0.75,
+            "pass_rate": 0.75,
+            "pass_rate_ci_95": [
+              0.5,
+              0.9375
+            ],
+            "passed_attempts": 36,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "skip_freshness_check": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {
+              "recovery_state_loss": 15
+            },
+            "pass_at_1": 0.6875,
+            "pass_power_k": 0.6875,
+            "pass_rate": 0.6875,
+            "pass_rate_ci_95": [
+              0.4375,
+              0.875
+            ],
+            "passed_attempts": 33,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          },
+          "uninterrupted": {
+            "attempt_count": 48,
+            "cost_per_success_usd": 0.0,
+            "failure_categories": {},
+            "pass_at_1": 1.0,
+            "pass_power_k": 1.0,
+            "pass_rate": 1.0,
+            "pass_rate_ci_95": [
+              1.0,
+              1.0
+            ],
+            "passed_attempts": 48,
+            "task_count": 16,
+            "total_cost_usd": 0.0
+          }
+        }
+      },
+      "artifact": "recovery-capability.json",
+      "metrics": {
+        "checkpoint_resume": {
+          "duplicate_operations": 0.0,
+          "lost_progress": 0.1875,
+          "state_equivalent": 0.8125
+        },
+        "drop_todos": {
+          "duplicate_operations": 0.0,
+          "lost_progress": 0.25,
+          "state_equivalent": 0.75
+        },
+        "ignore_schema_mismatch": {
+          "duplicate_operations": 0.0,
+          "lost_progress": 0.25,
+          "state_equivalent": 0.75
+        },
+        "lossy_resume": {
+          "duplicate_operations": 0.0625,
+          "lost_progress": 0.6875,
+          "state_equivalent": 0.3125
+        },
+        "replay_committed_operation": {
+          "duplicate_operations": 0.0625,
+          "lost_progress": 0.25,
+          "state_equivalent": 0.75
+        },
+        "skip_freshness_check": {
+          "duplicate_operations": 0.0,
+          "lost_progress": 0.3125,
+          "state_equivalent": 0.6875
+        },
+        "uninterrupted": {
+          "duplicate_operations": 0.0,
+          "lost_progress": 0.0,
+          "state_equivalent": 1.0
+        }
+      },
+      "task_count": 16
+    }
+  },
+  "repetitions": 3,
+  "schema_version": 1
+}

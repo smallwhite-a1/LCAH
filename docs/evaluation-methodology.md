@@ -137,6 +137,10 @@ final answer.
 
 Current strict result: **13/16 (81.25%)**.
 
+The committed phase-two run, including all per-attempt records and the audited
+human-readable report, is available at
+[`evaluation-results/phase-two-v1/REPORT.md`](../evaluation-results/phase-two-v1/REPORT.md).
+
 ## 5. Mutation sensitivity
 
 Each module has four small runner-level mutations. Mutations do not patch

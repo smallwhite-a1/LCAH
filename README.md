@@ -297,6 +297,7 @@ python scripts/run_module_capability_evals.py \
 | [Sandbox](docs/sandbox.md) | `run_shell` 隔离模式、backend 选择和文件系统边界。 |
 | [SWE-bench Lite](docs/swebench-lite.md) | 10/50 题确定性抽样、manifest 和断点续跑入口。 |
 | [Evaluation methodology](docs/evaluation-methodology.md) | 分层评测架构、模块 benchmark、统计方法、mutation sensitivity 和后续端到端方案。 |
+| [Phase-two evaluation results](evaluation-results/phase-two-v1/REPORT.md) | 上下文压缩、记忆和 checkpoint 恢复的逐题结果、分层统计、对照实验与 mutation sensitivity。 |
 
 ### v3 发布包
 
