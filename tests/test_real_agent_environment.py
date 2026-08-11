@@ -13,7 +13,7 @@ from lcah.evaluation.real_agent.environment import (
 def native_task(fixture: Path):
     payload = valid_task_payload()
     payload["grading"]["fixture_root"] = str(fixture)
-    payload["grading"]["protected_paths"] = ["hidden_test.py"]
+    payload["grading"]["grader_only_paths"] = ["hidden_test.py"]
     return TaskSpec.from_dict(payload)
 
 

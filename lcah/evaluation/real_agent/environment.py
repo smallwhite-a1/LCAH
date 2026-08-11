@@ -54,8 +54,8 @@ class NativeEnvironmentProvisioner:
             raise EnvironmentError(f"attempt workspace already exists: {destination}")
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(fixture, destination)
-        protected = {Path(item).name for item in task.grading.get("protected_paths", [])}
-        leaked = [path for path in destination.rglob("*") if path.is_file() and path.name in protected]
+        grader_only = {Path(item).name for item in task.grading.get("grader_only_paths", [])}
+        leaked = [path for path in destination.rglob("*") if path.is_file() and path.name in grader_only]
         if leaked:
             raise EnvironmentError(f"grader-only file leaked into workspace: {leaked[0].name}")
         commands = (["git", "init", "-q"], ["git", "add", "-A"],
