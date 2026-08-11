@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -61,12 +62,22 @@ class SWEbenchHarness:
     def run(self, *, dataset_name: str, predictions_path: str | Path, run_id: str,
             report_path: str | Path, max_workers: int = 1, timeout: int = 3600):
         check_swebench_installation()
+        predictions_path = Path(predictions_path).resolve()
+        report_path = Path(report_path)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        first_prediction = json.loads(Path(predictions_path).read_text().splitlines()[0])
+        model_name = str(first_prediction["model_name_or_path"])
+        generated_report = report_path.parent / f"{model_name.replace('/', '__')}.{run_id}.json"
         command = [sys.executable, "-m", "swebench.harness.run_evaluation",
                    "--dataset_name", dataset_name, "--predictions_path", str(predictions_path),
-                   "--max_workers", str(max_workers), "--run_id", run_id]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=False)
+                   "--max_workers", str(max_workers), "--run_id", run_id,
+                   "--timeout", str(timeout), "--report_dir", str(report_path.parent)]
+        result = subprocess.run(command, cwd=report_path.parent, capture_output=True, text=True,
+                                timeout=timeout + 300, check=False)
         if result.returncode != 0:
             raise RuntimeError(result.stderr.strip() or "official SWE-bench harness failed")
-        if not Path(report_path).exists():
+        if not generated_report.exists():
             raise RuntimeError("official SWE-bench report was not produced")
+        if generated_report != report_path:
+            os.replace(generated_report, report_path)
         return result
